@@ -22,7 +22,7 @@ struct SockaddrRc {
     rc_channel: u8,
 }
 
-/// RFCOMM connection to a FreeBuds device.
+/// RFCOMM connection to a device.
 /// Uses raw blocking sockets for connect (like Python/OpenFreebuds),
 /// then wraps in tokio async I/O for the read/write phase.
 pub struct RfcommConnection {

@@ -47,7 +47,7 @@ pub fn render(
             "About",
             Style::default().add_modifier(Modifier::BOLD),
         )),
-        Line::from("FreeBuds Manager v0.1.0"),
+        Line::from("MyBuds v0.1.0"),
         Line::from("Manages Huawei FreeBuds headphones via SPP protocol"),
         Line::from("Based on the OpenFreebuds project"),
     ])

@@ -11,7 +11,7 @@ pub struct BluetoothDevice {
     pub connected: bool,
 }
 
-/// List paired Bluetooth devices, optionally filtering by known FreeBuds names.
+/// List paired Bluetooth devices, optionally filtering by known device names.
 pub async fn list_paired_devices(filter_known: bool) -> Result<Vec<BluetoothDevice>> {
     let session = Session::new().await?;
     let adapter = session.default_adapter().await?;
@@ -43,11 +43,11 @@ pub async fn list_paired_devices(filter_known: bool) -> Result<Vec<BluetoothDevi
         });
     }
 
-    info!("Found {} paired FreeBuds devices", result.len());
+    info!("Found {} paired devices", result.len());
     Ok(result)
 }
 
-/// Check if a device name matches a known Huawei FreeBuds device.
+/// Check if a device name matches a known supported device.
 pub fn is_known_device(name: &str) -> bool {
     name.starts_with("HUAWEI Free")
         || name.starts_with("HUAWEI FreeClip")

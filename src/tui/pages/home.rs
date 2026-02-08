@@ -18,7 +18,7 @@ pub fn render(
         let msg = Paragraph::new(vec![
             Line::from(""),
             Line::from(Span::styled(
-                "FreeBuds Manager",
+                "MyBuds",
                 Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
             )),
             Line::from(""),

@@ -204,7 +204,7 @@ impl TuiApp {
         // Tab bar
         let titles: Vec<&str> = Tab::all().iter().map(|t| t.label()).collect();
         let tabs = Tabs::new(titles)
-            .block(Block::default().borders(Borders::BOTTOM).title("FreeBuds Manager"))
+            .block(Block::default().borders(Borders::BOTTOM).title("MyBuds"))
             .select(self.current_tab.index())
             .highlight_style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD));
         frame.render_widget(tabs, chunks[0]);

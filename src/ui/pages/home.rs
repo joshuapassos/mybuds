@@ -17,7 +17,7 @@ pub fn view<'a>(
         return container(
             column![
                 Space::with_height(40),
-                text("FreeBuds Manager").size(24),
+                text("MyBuds").size(24),
                 Space::with_height(8),
                 text("No device connected")
                     .size(16)

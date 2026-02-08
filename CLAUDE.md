@@ -11,7 +11,7 @@ cargo build                  # debug build
 cargo build --release        # release build
 cargo run                    # GUI mode
 cargo run -- --tui           # TUI mode
-RUST_LOG=freebuds=debug cargo run  # with debug logging
+RUST_LOG=mybuds=debug cargo run  # with debug logging
 ```
 
 ## Architecture
@@ -22,7 +22,7 @@ RUST_LOG=freebuds=debug cargo run  # with debug logging
 - **`src/ui/`** — Iced 0.13 GUI. Pages under `pages/`, custom widgets under `widgets/`.
 - **`src/tui/`** — Ratatui terminal UI. Same page structure as GUI.
 - **`src/tray/`** — System tray via `ksni` (D-Bus StatusNotifierItem).
-- **`src/config/`** — TOML config at `~/.config/freebuds/config.toml`.
+- **`src/config/`** — TOML config at `~/.config/mybuds/config.toml`.
 
 ## Key Patterns
 

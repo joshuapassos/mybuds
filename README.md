@@ -1,4 +1,4 @@
-# FreeBuds Manager
+# MyBuds
 
 Desktop manager for Huawei FreeBuds and HONOR Earbuds headphones on Linux. Built with Rust.
 
@@ -47,21 +47,21 @@ Devices not listed above will use a **generic probe** profile that attempts to d
 cargo build --release
 ```
 
-The binary will be at `target/release/freebuds`.
+The binary will be at `target/release/mybuds`.
 
 ## Usage
 
 ```bash
 # GUI mode (default)
-freebuds
+mybuds
 
 # Terminal UI mode
-freebuds --tui
+mybuds --tui
 ```
 
 ### Configuration
 
-Config file: `~/.config/freebuds/config.toml`
+Config file: `~/.config/mybuds/config.toml`
 
 ```toml
 device_address = "AA:BB:CC:DD:EE:FF"  # optional, auto-detected if omitted
@@ -73,10 +73,10 @@ start_minimized = false                 # start in system tray (default: false)
 ### Logging
 
 ```bash
-RUST_LOG=freebuds=debug freebuds
+RUST_LOG=mybuds=debug mybuds
 ```
 
-In TUI mode, logs are written to `/tmp/freebuds.log`.
+In TUI mode, logs are written to `/tmp/mybuds.log`.
 
 ## Architecture
 

@@ -1,5 +1,5 @@
 [package]
-name = "freebuds"
+name = "mybuds"
 version = "0.1.0"
 edition = "2021"
 description = "Desktop manager for Huawei FreeBuds headphones"

@@ -10,8 +10,8 @@ pub fn build_menu(
     anc_mode: Option<&str>,
     anc_options: &[&str],
     connected: bool,
-) -> Vec<MenuItem<super::FreeBudsTray>> {
-    let mut items: Vec<MenuItem<super::FreeBudsTray>> = Vec::new();
+) -> Vec<MenuItem<super::MyBudsTray>> {
+    let mut items: Vec<MenuItem<super::MyBudsTray>> = Vec::new();
 
     // Device name header
     if let Some(name) = device_name {
@@ -85,7 +85,7 @@ pub fn build_menu(
             items.push(
                 RadioGroup {
                     selected: selected_idx,
-                    select: Box::new(move |tray: &mut super::FreeBudsTray, idx| {
+                    select: Box::new(move |tray: &mut super::MyBudsTray, idx| {
                         if let Some(mode) = anc_opts.get(idx) {
                             tray.pending_anc_mode = Some(mode.clone());
                         }
@@ -112,7 +112,7 @@ pub fn build_menu(
     items.push(
         StandardItem {
             label: "Show Window".to_string(),
-            activate: Box::new(|tray: &mut super::FreeBudsTray| {
+            activate: Box::new(|tray: &mut super::MyBudsTray| {
                 tray.flags.show_window.store(true, Ordering::Relaxed);
             }),
             ..Default::default()
@@ -126,7 +126,7 @@ pub fn build_menu(
     items.push(
         StandardItem {
             label: "Quit".to_string(),
-            activate: Box::new(|tray: &mut super::FreeBudsTray| {
+            activate: Box::new(|tray: &mut super::MyBudsTray| {
                 tray.flags.quit_app.store(true, Ordering::Relaxed);
             }),
             ..Default::default()

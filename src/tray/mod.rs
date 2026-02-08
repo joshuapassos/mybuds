@@ -24,7 +24,7 @@ impl TrayFlags {
 }
 
 /// Tray application state.
-pub struct FreeBudsTray {
+pub struct MyBudsTray {
     pub connected: bool,
     pub device_name: Option<String>,
     pub battery: HashMap<String, String>,
@@ -34,7 +34,7 @@ pub struct FreeBudsTray {
     pub flags: TrayFlags,
 }
 
-impl FreeBudsTray {
+impl MyBudsTray {
     pub fn new(flags: TrayFlags) -> Self {
         Self {
             connected: false,
@@ -48,9 +48,9 @@ impl FreeBudsTray {
     }
 }
 
-impl ksni::Tray for FreeBudsTray {
+impl ksni::Tray for MyBudsTray {
     fn id(&self) -> String {
-        "freebuds-manager".into()
+        "mybuds".into()
     }
 
     fn title(&self) -> String {
@@ -61,7 +61,7 @@ impl ksni::Tray for FreeBudsTray {
                 name.clone()
             }
         } else {
-            "FreeBuds Manager".into()
+            "MyBuds".into()
         }
     }
 
@@ -96,8 +96,8 @@ impl ksni::Tray for FreeBudsTray {
 }
 
 /// Spawn the tray service. Returns a handle to update tray state.
-pub fn spawn_tray(flags: TrayFlags) -> ksni::Handle<FreeBudsTray> {
-    let service = ksni::TrayService::new(FreeBudsTray::new(flags));
+pub fn spawn_tray(flags: TrayFlags) -> ksni::Handle<MyBudsTray> {
+    let service = ksni::TrayService::new(MyBudsTray::new(flags));
     let handle = service.handle();
     service.spawn();
     handle
@@ -105,7 +105,7 @@ pub fn spawn_tray(flags: TrayFlags) -> ksni::Handle<FreeBudsTray> {
 
 /// Update tray state from the property store.
 pub async fn update_tray_from_props(
-    handle: &ksni::Handle<FreeBudsTray>,
+    handle: &ksni::Handle<MyBudsTray>,
     props: &PropertyStore,
     device_name: Option<&str>,
 ) {

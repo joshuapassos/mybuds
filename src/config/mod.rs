@@ -34,11 +34,11 @@ impl Default for AppConfig {
 }
 
 impl AppConfig {
-    /// Config file path: ~/.config/freebuds/config.toml
+    /// Config file path: ~/.config/mybuds/config.toml
     pub fn path() -> PathBuf {
         let config_dir = dirs::config_dir()
             .unwrap_or_else(|| PathBuf::from("."))
-            .join("freebuds");
+            .join("mybuds");
         config_dir.join("config.toml")
     }
 

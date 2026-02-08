@@ -25,7 +25,7 @@ pub fn view(config: &HashMap<String, String>) -> Element<'_, Message> {
     content = content.push(
         column![
             text("About").size(16),
-            text("FreeBuds Manager v0.1.0").size(12),
+            text("MyBuds v0.1.0").size(12),
             text("Manages Huawei FreeBuds headphones via SPP protocol").size(12),
             text("Based on the OpenFreebuds project").size(12),
         ]

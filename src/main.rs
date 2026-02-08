@@ -21,7 +21,7 @@ use device::models::profile_for_device;
 use tray::TrayFlags;
 
 #[derive(Parser)]
-#[command(name = "freebuds", about = "Desktop manager for Huawei FreeBuds headphones")]
+#[command(name = "mybuds", about = "Desktop manager for Huawei FreeBuds headphones")]
 struct Cli {
     /// Run in terminal UI mode instead of GUI
     #[arg(long)]
@@ -33,11 +33,11 @@ fn main() -> Result<()> {
 
     // Initialize logging — in TUI mode, write to a log file to avoid corrupting the terminal
     let env_filter = tracing_subscriber::EnvFilter::from_default_env()
-        .add_directive("freebuds=debug".parse().unwrap())
+        .add_directive("mybuds=debug".parse().unwrap())
         .add_directive("bluer=info".parse().unwrap());
 
     if cli.tui {
-        let log_file = std::fs::File::create("/tmp/freebuds.log")?;
+        let log_file = std::fs::File::create("/tmp/mybuds.log")?;
         tracing_subscriber::fmt()
             .with_env_filter(env_filter)
             .with_writer(log_file)
@@ -49,7 +49,7 @@ fn main() -> Result<()> {
             .init();
     }
 
-    info!("FreeBuds Manager starting");
+    info!("MyBuds starting");
 
     // Load config
     let config = AppConfig::load();
@@ -97,12 +97,12 @@ fn run_gui_mode(
     });
 
     // Run iced GUI on main thread
-    iced::application("FreeBuds Manager", FreeBudsApp::update, FreeBudsApp::view)
-        .theme(FreeBudsApp::theme)
-        .subscription(FreeBudsApp::subscription)
+    iced::application("MyBuds", MyBudsApp::update, MyBudsApp::view)
+        .theme(MyBudsApp::theme)
+        .subscription(MyBudsApp::subscription)
         .window_size((480.0, 600.0))
         .exit_on_close_request(true)
-        .run_with(move || FreeBudsApp::new(props.clone(), Some(prop_tx), Some(tray_flags)))?;
+        .run_with(move || MyBudsApp::new(props.clone(), Some(prop_tx), Some(tray_flags)))?;
 
     Ok(())
 }
@@ -130,19 +130,19 @@ fn run_tui_mode(
 }
 
 // Re-export for iced
-use ui::FreeBudsApp;
+use ui::MyBudsApp;
 
 async fn run_bluetooth_with_tray(
     config: AppConfig,
     props: PropertyStore,
     prop_rx: mpsc::Receiver<(String, String, String)>,
-    tray_handle: ksni::Handle<tray::FreeBudsTray>,
+    tray_handle: ksni::Handle<tray::MyBudsTray>,
 ) -> Result<()> {
     // Find device
     let (address, device_name) = match find_device(&config).await {
         Some(dev) => dev,
         None => {
-            info!("No FreeBuds device found. Waiting for device...");
+            info!("No device found. Waiting for device...");
             loop {
                 tokio::time::sleep(std::time::Duration::from_secs(5)).await;
                 if let Some(dev) = find_device(&config).await {
@@ -198,7 +198,7 @@ async fn run_bluetooth_headless(
     let (address, device_name) = match find_device(&config).await {
         Some(dev) => dev,
         None => {
-            info!("No FreeBuds device found. Waiting for device...");
+            info!("No device found. Waiting for device...");
             loop {
                 tokio::time::sleep(std::time::Duration::from_secs(5)).await;
                 if let Some(dev) = find_device(&config).await {

@@ -64,7 +64,7 @@ pub enum Message {
 }
 
 /// Application state.
-pub struct FreeBudsApp {
+pub struct MyBudsApp {
     current_tab: Tab,
     props: PropertyStore,
     // Cached property snapshots
@@ -82,7 +82,7 @@ pub struct FreeBudsApp {
     tray_flags: Option<TrayFlags>,
 }
 
-impl FreeBudsApp {
+impl MyBudsApp {
     pub fn new(
         props: PropertyStore,
         property_tx: Option<tokio::sync::mpsc::Sender<(String, String, String)>>,
