@@ -87,7 +87,7 @@ pub fn build_menu(
                     selected: selected_idx,
                     select: Box::new(move |tray: &mut super::MyBudsTray, idx| {
                         if let Some(mode) = anc_opts.get(idx) {
-                            tray.pending_anc_mode = Some(mode.clone());
+                            *tray.flags.pending_anc_mode.lock().unwrap() = Some(mode.clone());
                         }
                     }),
                     options,

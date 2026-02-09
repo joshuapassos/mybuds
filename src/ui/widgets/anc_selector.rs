@@ -1,5 +1,5 @@
 use iced::widget::{button, column, container, row, text};
-use iced::{Alignment, Element, Length};
+use iced::{Element, Length};
 
 fn anc_mode_label(mode: &str) -> String {
     match mode {

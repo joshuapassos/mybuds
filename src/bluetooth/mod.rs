@@ -60,11 +60,6 @@ impl BluetoothManager {
         }
     }
 
-    /// Get property store.
-    pub fn props(&self) -> crate::device::handler::PropertyStore {
-        self.device_manager.props()
-    }
-
     /// Run the connection loop: connect, init handlers, route packets.
     /// Returns when the connection is lost.
     pub async fn run(&mut self) -> Result<()> {

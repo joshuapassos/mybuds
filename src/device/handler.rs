@@ -60,8 +60,3 @@ pub async fn put_properties(
     }
 }
 
-/// Helper to read a single property.
-pub async fn get_property(props: &PropertyStore, group: &str, key: &str) -> Option<String> {
-    let store = props.lock().await;
-    store.get(group)?.get(key).cloned()
-}

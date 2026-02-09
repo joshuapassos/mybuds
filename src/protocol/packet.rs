@@ -114,6 +114,7 @@ impl HuaweiSppPacket {
     }
 
     /// Parse from bytes with CRC validation.
+    #[cfg(test)]
     pub fn from_bytes_checked(data: &[u8]) -> Result<Self> {
         ensure!(data.len() >= 8, "Packet too short for CRC check");
         let crc_data = &data[..data.len() - 2];

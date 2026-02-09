@@ -10,9 +10,6 @@ use crate::protocol::HuaweiSppPacket;
 /// Standard AACP packet header.
 pub const AAP_HEADER: [u8; 4] = [0x04, 0x00, 0x04, 0x00];
 
-/// L2CAP PSM used by AirPods.
-pub const AIRPODS_PSM: u16 = 0x1001;
-
 // --- Opcodes ---
 
 pub const OP_BATTERY_INFO: u8 = 0x04;
@@ -49,7 +46,6 @@ pub const BATT_CASE: u8 = 0x08;
 // --- Battery status ---
 
 pub const BATT_CHARGING: u8 = 0x01;
-pub const BATT_DISCHARGING: u8 = 0x02;
 pub const BATT_DISCONNECTED: u8 = 0x04;
 
 // --- Ear detection values ---
@@ -139,6 +135,7 @@ impl AapPacket {
     // --- Builder helpers ---
 
     /// Build a control command packet.
+    #[cfg(test)]
     pub fn control_command(identifier: u8, value: u8) -> Self {
         Self {
             opcode: OP_CONTROL_COMMAND,

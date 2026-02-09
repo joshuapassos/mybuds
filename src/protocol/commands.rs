@@ -54,12 +54,5 @@ pub const CMD_EQUALIZER_WRITE: [u8; 2] = [0x2B, 0x49];
 pub const CMD_SOUND_QUALITY_READ: [u8; 2] = [0x2B, 0xA3];
 pub const CMD_SOUND_QUALITY_WRITE: [u8; 2] = [0x2B, 0xA2];
 
-// Voice language
-pub const CMD_VOICE_LANGUAGE_READ: [u8; 2] = [0x0C, 0x02];
-pub const CMD_VOICE_LANGUAGE_WRITE: [u8; 2] = [0x0C, 0x01];
-
-// In-ear state
-pub const CMD_IN_EAR_STATE: [u8; 2] = [0x01, 0x0B];
-
 /// Helper type for command IDs
 pub type CommandId = [u8; 2];

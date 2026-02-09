@@ -1,4 +1,4 @@
-use iced::widget::{column, container, row, text, Space};
+use iced::widget::{column, container, row, text};
 use iced::{Alignment, Element, Length};
 
 /// Color for battery level.

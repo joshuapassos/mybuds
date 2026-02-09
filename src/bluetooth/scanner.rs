@@ -7,8 +7,6 @@ use tracing::{debug, info};
 pub struct BluetoothDevice {
     pub name: String,
     pub address: Address,
-    pub paired: bool,
-    pub connected: bool,
 }
 
 /// List paired Bluetooth devices, optionally filtering by known device names.
@@ -24,7 +22,6 @@ pub async fn list_paired_devices(filter_known: bool) -> Result<Vec<BluetoothDevi
         let device = adapter.device(addr)?;
         let name = device.name().await?.unwrap_or_default();
         let paired = device.is_paired().await?;
-        let connected = device.is_connected().await?;
 
         if !paired {
             continue;
@@ -34,12 +31,10 @@ pub async fn list_paired_devices(filter_known: bool) -> Result<Vec<BluetoothDevi
             continue;
         }
 
-        debug!("Found device: {} ({}), connected={}", name, addr, connected);
+        debug!("Found device: {} ({})", name, addr);
         result.push(BluetoothDevice {
             name,
             address: addr,
-            paired,
-            connected,
         });
     }
 

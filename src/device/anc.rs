@@ -83,30 +83,6 @@ impl CancelLevel {
     }
 }
 
-/// Awareness level values.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum AwarenessLevel {
-    VoiceBoost = 1,
-    Normal = 2,
-}
-
-impl AwarenessLevel {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            Self::VoiceBoost => "voice_boost",
-            Self::Normal => "normal",
-        }
-    }
-
-    pub fn from_str(s: &str) -> Option<Self> {
-        match s {
-            "voice_boost" => Some(Self::VoiceBoost),
-            "normal" => Some(Self::Normal),
-            _ => None,
-        }
-    }
-}
-
 /// ANC mode switching handler.
 pub struct AncHandler {
     with_cancel_levels: bool,

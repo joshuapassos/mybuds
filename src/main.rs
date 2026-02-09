@@ -73,13 +73,14 @@ fn run_gui_mode(
     prop_tx: mpsc::Sender<(String, String, String)>,
     prop_rx: mpsc::Receiver<(String, String, String)>,
 ) -> Result<()> {
-    use std::sync::atomic::Ordering;
-
     let props_clone = props.clone();
 
     // Shared tray flags for tray <-> iced communication
     let tray_flags = TrayFlags::new();
     let tray_flags_clone = tray_flags.clone();
+
+    // Clone prop_tx so the tray can also send property changes (e.g. ANC mode)
+    let prop_tx_tray = prop_tx.clone();
 
     // Spawn Bluetooth manager in background
     let config_clone = config.clone();
@@ -87,10 +88,11 @@ fn run_gui_mode(
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(async move {
             // Spawn tray
+            let tray_flags_for_loop = tray_flags_clone.clone();
             let tray_handle = tray::spawn_tray(tray_flags_clone);
 
             if let Err(e) =
-                run_bluetooth_with_tray(config_clone, props_clone.clone(), prop_rx, tray_handle)
+                run_bluetooth_with_tray(config_clone, props_clone.clone(), prop_rx, tray_handle, tray_flags_for_loop, prop_tx_tray)
                     .await
             {
                 error!("Bluetooth manager error: {}", e);
@@ -139,6 +141,8 @@ async fn run_bluetooth_with_tray(
     props: PropertyStore,
     prop_rx: mpsc::Receiver<(String, String, String)>,
     tray_handle: ksni::Handle<tray::MyBudsTray>,
+    tray_flags: TrayFlags,
+    prop_tx: mpsc::Sender<(String, String, String)>,
 ) -> Result<()> {
     // Find device
     let (address, device_name) = match find_device(&config).await {
@@ -175,7 +179,7 @@ async fn run_bluetooth_with_tray(
     let tray_handle_clone = tray_handle.clone();
     let device_name_clone = device_name.clone();
     tokio::spawn(async move {
-        let mut interval = tokio::time::interval(std::time::Duration::from_secs(2));
+        let mut interval = tokio::time::interval(std::time::Duration::from_secs(1));
         loop {
             interval.tick().await;
             tray::update_tray_from_props(
@@ -184,6 +188,13 @@ async fn run_bluetooth_with_tray(
                 Some(&device_name_clone),
             )
             .await;
+
+            // Check for pending ANC mode change from tray menu
+            let pending = tray_flags.pending_anc_mode.lock().unwrap().take();
+            if let Some(mode) = pending {
+                info!("Tray ANC mode change: {}", mode);
+                let _ = prop_tx.send(("anc".to_string(), "mode".to_string(), mode)).await;
+            }
         }
     });
 

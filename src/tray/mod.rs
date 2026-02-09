@@ -12,6 +12,8 @@ use crate::device::handler::PropertyStore;
 pub struct TrayFlags {
     pub show_window: Arc<AtomicBool>,
     pub quit_app: Arc<AtomicBool>,
+    /// Pending ANC mode change from tray menu (consumed by bluetooth loop).
+    pub pending_anc_mode: Arc<std::sync::Mutex<Option<String>>>,
 }
 
 impl TrayFlags {
@@ -19,6 +21,7 @@ impl TrayFlags {
         Self {
             show_window: Arc::new(AtomicBool::new(false)),
             quit_app: Arc::new(AtomicBool::new(false)),
+            pending_anc_mode: Arc::new(std::sync::Mutex::new(None)),
         }
     }
 }
@@ -30,7 +33,6 @@ pub struct MyBudsTray {
     pub battery: HashMap<String, String>,
     pub anc_mode: Option<String>,
     pub anc_options: Vec<String>,
-    pub pending_anc_mode: Option<String>,
     pub flags: TrayFlags,
 }
 
@@ -42,7 +44,6 @@ impl MyBudsTray {
             battery: HashMap::new(),
             anc_mode: None,
             anc_options: Vec::new(),
-            pending_anc_mode: None,
             flags,
         }
     }

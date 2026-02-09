@@ -28,9 +28,7 @@ struct PresetEntry {
 
 /// Equalizer preset handler.
 pub struct EqualizerHandler {
-    presets: Vec<(u8, &'static str)>,
     with_custom: bool,
-    custom_rows: usize,
     custom_max_count: usize,
     preset_data: Vec<PresetEntry>,
 }
@@ -50,9 +48,7 @@ impl EqualizerHandler {
             .collect();
 
         Self {
-            presets,
             with_custom,
-            custom_rows: 10,
             custom_max_count: 3,
             preset_data,
         }

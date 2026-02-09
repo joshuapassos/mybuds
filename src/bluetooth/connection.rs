@@ -1,5 +1,4 @@
 use std::os::fd::{AsRawFd, FromRawFd, OwnedFd};
-use std::time::Duration;
 
 use anyhow::{Context, Result};
 use bluer::Address;
