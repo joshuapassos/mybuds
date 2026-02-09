@@ -14,6 +14,8 @@ pub struct TrayFlags {
     pub quit_app: Arc<AtomicBool>,
     /// Pending ANC mode change from tray menu (consumed by bluetooth loop).
     pub pending_anc_mode: Arc<std::sync::Mutex<Option<String>>>,
+    /// Pending Dual Connect toggle from tray menu (consumed by bluetooth loop).
+    pub pending_dual_connect: Arc<std::sync::Mutex<Option<bool>>>,
 }
 
 impl TrayFlags {
@@ -22,6 +24,7 @@ impl TrayFlags {
             show_window: Arc::new(AtomicBool::new(false)),
             quit_app: Arc::new(AtomicBool::new(false)),
             pending_anc_mode: Arc::new(std::sync::Mutex::new(None)),
+            pending_dual_connect: Arc::new(std::sync::Mutex::new(None)),
         }
     }
 }
@@ -33,6 +36,8 @@ pub struct MyBudsTray {
     pub battery: HashMap<String, String>,
     pub anc_mode: Option<String>,
     pub anc_options: Vec<String>,
+    pub dual_connect_enabled: bool,
+    pub dual_connect_available: bool,
     pub flags: TrayFlags,
 }
 
@@ -44,6 +49,8 @@ impl MyBudsTray {
             battery: HashMap::new(),
             anc_mode: None,
             anc_options: Vec::new(),
+            dual_connect_enabled: false,
+            dual_connect_available: false,
             flags,
         }
     }
@@ -87,6 +94,8 @@ impl ksni::Tray for MyBudsTray {
             self.anc_mode.as_deref(),
             &anc_refs,
             self.connected,
+            self.dual_connect_enabled,
+            self.dual_connect_available,
         )
     }
 }
@@ -119,6 +128,10 @@ pub async fn update_tray_from_props(
         .unwrap_or_default();
     let connected = !battery.is_empty();
 
+    let dual_connect = store.get("dual_connect").cloned().unwrap_or_default();
+    let dual_connect_enabled = dual_connect.get("enabled").map_or(false, |s| s == "true");
+    let dual_connect_available = !dual_connect.is_empty();
+
     let name = device_name.map(String::from);
 
     handle.update(move |tray| {
@@ -127,5 +140,7 @@ pub async fn update_tray_from_props(
         tray.battery = battery.clone();
         tray.anc_mode = anc_mode.clone();
         tray.anc_options = anc_options.clone();
+        tray.dual_connect_enabled = dual_connect_enabled;
+        tray.dual_connect_available = dual_connect_available;
     });
 }

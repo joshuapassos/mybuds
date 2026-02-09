@@ -19,6 +19,21 @@ fn param_descriptor(key: u8) -> &'static str {
     }
 }
 
+/// Map device model codes to friendly names
+fn friendly_device_name(model_code: &str) -> Option<&'static str> {
+    match model_code {
+        // FreeBuds series
+        "BTFT0013" => Some("FreeBuds 5"),
+        "CD-R551" => Some("FreeBuds Pro 3"),
+        "T0003" => Some("FreeBuds Pro 2"),
+        "T0006" => Some("FreeBuds 5i"),
+        "T0017" => Some("FreeBuds 6i"),
+        "T0020" => Some("FreeBuds SE 2"),
+        // Add more mappings as needed
+        _ => None,
+    }
+}
+
 /// Device info handler. Reads model, hardware/software version, serial numbers.
 pub struct InfoHandler;
 
@@ -42,6 +57,7 @@ impl DeviceHandler for InfoHandler {
 
     async fn on_packet(&mut self, packet: &HuaweiSppPacket, props: &PropertyStore) -> Result<()> {
         let mut out = HashMap::new();
+        let mut model_code: Option<String> = None;
 
         for (&key, value) in &packet.parameters {
             // Special case: per-earphone serial numbers (param 24)
@@ -65,7 +81,19 @@ impl DeviceHandler for InfoHandler {
             let decoded = String::from_utf8(value.clone())
                 .unwrap_or_else(|_| value.iter().map(|b| format!("{:02x}", b)).collect());
 
+            // Save model code for friendly name lookup
+            if key == 15 || key == 10 {
+                model_code = Some(decoded.clone());
+            }
+
             out.insert(name, decoded);
+        }
+
+        // Add friendly device name if we can map the model code
+        if let Some(code) = model_code {
+            if let Some(friendly_name) = friendly_device_name(&code) {
+                out.insert("device_name".into(), friendly_name.into());
+            }
         }
 
         put_properties(props, "info", out).await;

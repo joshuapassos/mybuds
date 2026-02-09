@@ -220,6 +220,7 @@ pub fn freebuds_5() -> DeviceProfile {
             Box::new(SwipeGestureHandler),
             Box::new(LowLatencyHandler),
             Box::new(SoundQualityHandler),
+            Box::new(DualConnectHandler::default()),
             Box::new(EqualizerHandler::with_presets(vec![
                 (1, "default"),
                 (2, "hardbass"),

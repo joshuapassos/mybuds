@@ -195,6 +195,19 @@ async fn run_bluetooth_with_tray(
                 info!("Tray ANC mode change: {}", mode);
                 let _ = prop_tx.send(("anc".to_string(), "mode".to_string(), mode)).await;
             }
+
+            // Check for pending Dual Connect toggle from tray menu
+            let pending_dc = tray_flags.pending_dual_connect.lock().unwrap().take();
+            if let Some(enabled) = pending_dc {
+                info!("Tray Dual Connect toggle: {}", enabled);
+                let _ = prop_tx
+                    .send((
+                        "dual_connect".to_string(),
+                        "enabled".to_string(),
+                        enabled.to_string(),
+                    ))
+                    .await;
+            }
         }
     });
 

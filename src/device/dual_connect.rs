@@ -36,7 +36,7 @@ impl DualConnectDevice {
         let mac: String = mac_bytes.iter().map(|b| format!("{:02x}", b)).collect();
 
         let name = packet
-            .find_param(5)
+            .find_param(9)
             .iter()
             .copied()
             .take_while(|&b| b != 0)
@@ -101,6 +101,7 @@ impl DeviceHandler for DualConnectHandler {
             CMD_DUAL_CONNECT_ENUMERATE,
             CMD_DUAL_CONNECT_CHANGE_EVENT,
             CMD_DUAL_CONNECT_ENABLED_READ,
+            CMD_DUAL_CONNECT_ENABLED_WRITE,
         ]
     }
 
@@ -108,7 +109,6 @@ impl DeviceHandler for DualConnectHandler {
         &[
             CMD_DUAL_CONNECT_PREFERRED_WRITE,
             CMD_DUAL_CONNECT_EXECUTE,
-            CMD_DUAL_CONNECT_ENABLED_WRITE,
         ]
     }
 
@@ -139,8 +139,10 @@ impl DeviceHandler for DualConnectHandler {
         }
 
         if packet.command_id == CMD_DUAL_CONNECT_CHANGE_EVENT {
-            // Device list changed, need re-init (caller should handle this)
             tracing::debug!("Dual connect change event received");
+            // State changed, clear pending devices so we re-enumerate on next update
+            self.pending_devices.clear();
+            self.devices_count = 0;
             return Ok(());
         }
 
@@ -183,6 +185,16 @@ impl DeviceHandler for DualConnectHandler {
                 &[(1, vec![byte_val])],
             );
             sender.send(pkt).await?;
+
+            // Re-read state to update UI
+            let read_pkt = HuaweiSppPacket::read_request(CMD_DUAL_CONNECT_ENABLED_READ, &[1]);
+            sender.send(read_pkt).await?;
+
+            // Re-enumerate devices
+            self.pending_devices.clear();
+            self.devices_count = 0;
+            let enum_pkt = HuaweiSppPacket::write_request(CMD_DUAL_CONNECT_ENUMERATE, &[(1, vec![])]);
+            sender.send(enum_pkt).await?;
         } else if prop == "preferred_device" {
             let mac_bytes = hex_to_bytes(value)?;
             let pkt = HuaweiSppPacket::write_request(

@@ -10,6 +10,8 @@ pub fn build_menu(
     anc_mode: Option<&str>,
     anc_options: &[&str],
     connected: bool,
+    dual_connect_enabled: bool,
+    dual_connect_available: bool,
 ) -> Vec<MenuItem<super::MyBudsTray>> {
     let mut items: Vec<MenuItem<super::MyBudsTray>> = Vec::new();
 
@@ -91,6 +93,24 @@ pub fn build_menu(
                         }
                     }),
                     options,
+                }
+                .into(),
+            );
+            items.push(MenuItem::Separator);
+        }
+
+        // Dual Connect toggle
+        if dual_connect_available {
+            items.push(
+                CheckmarkItem {
+                    label: "Dual Connect".to_string(),
+                    checked: dual_connect_enabled,
+                    enabled: true,
+                    activate: Box::new(|tray: &mut super::MyBudsTray| {
+                        let new_state = !tray.dual_connect_enabled;
+                        *tray.flags.pending_dual_connect.lock().unwrap() = Some(new_state);
+                    }),
+                    ..Default::default()
                 }
                 .into(),
             );
