@@ -63,7 +63,7 @@ pub enum Message {
     SetPersonalizedVolume(bool),
     /// Property store snapshot received from async task.
     PropsRefreshed(HashMap<String, HashMap<String, String>>),
-    /// Window close button clicked — hide to tray instead of exiting.
+    /// Window close button was clicked.
     WindowCloseRequested(iced::window::Id),
     Tick,
 }
@@ -85,12 +85,25 @@ pub struct MyBudsApp {
     conversation_awareness: HashMap<String, String>,
     personalized_volume: HashMap<String, String>,
     connected: bool,
-    /// Main window ID (captured on first close request)
-    window_id: Option<iced::window::Id>,
+    /// Currently open main window (None = hidden in tray)
+    main_window: Option<iced::window::Id>,
     /// Channel to send property change requests
     property_tx: Option<tokio::sync::mpsc::Sender<(String, String, String)>>,
     /// Tray communication flags
     tray_flags: Option<TrayFlags>,
+}
+
+fn window_settings() -> iced::window::Settings {
+    let icon = iced::window::icon::from_file_data(
+        include_bytes!("../../assets/icon-128.png"),
+        None,
+    )
+    .ok();
+    iced::window::Settings {
+        size: iced::Size::new(480.0, 600.0),
+        icon,
+        ..Default::default()
+    }
 }
 
 impl MyBudsApp {
@@ -99,6 +112,9 @@ impl MyBudsApp {
         property_tx: Option<tokio::sync::mpsc::Sender<(String, String, String)>>,
         tray_flags: Option<TrayFlags>,
     ) -> (Self, Task<Message>) {
+        // Daemon doesn't open a window — we open one ourselves
+        let (id, open_task) = iced::window::open(window_settings());
+
         (
             Self {
                 current_tab: Tab::Home,
@@ -114,11 +130,11 @@ impl MyBudsApp {
                 conversation_awareness: HashMap::new(),
                 personalized_volume: HashMap::new(),
                 connected: false,
-                window_id: None,
+                main_window: Some(id),
                 property_tx,
                 tray_flags,
             },
-            Task::none(),
+            open_task.discard(),
         )
     }
 
@@ -169,22 +185,22 @@ impl MyBudsApp {
                 self.send_property("personalized_volume", "enabled", if enabled { "true" } else { "false" });
             }
             Message::WindowCloseRequested(id) => {
-                self.window_id = Some(id);
-                return iced::window::change_mode(id, iced::window::Mode::Hidden);
+                // Close the window but keep the daemon alive
+                self.main_window = None;
+                return iced::window::close(id);
             }
             Message::Tick => {
-                // Check tray quit signal
                 if let Some(ref flags) = self.tray_flags {
-                    if flags.quit_app.swap(false, Ordering::Relaxed) {
+                    // Check tray quit signal
+                    if flags.quit_app.load(Ordering::Relaxed) {
                         return iced::exit();
                     }
                     // Check tray show-window signal
                     if flags.show_window.swap(false, Ordering::Relaxed) {
-                        if let Some(id) = self.window_id {
-                            return Task::batch([
-                                iced::window::change_mode(id, iced::window::Mode::Windowed),
-                                iced::window::gain_focus(id),
-                            ]);
+                        if self.main_window.is_none() {
+                            let (id, open_task) = iced::window::open(window_settings());
+                            self.main_window = Some(id);
+                            return open_task.discard();
                         }
                     }
                 }
@@ -216,7 +232,7 @@ impl MyBudsApp {
         Task::none()
     }
 
-    pub fn view(&self) -> Element<'_, Message> {
+    pub fn view(&self, _window_id: iced::window::Id) -> Element<'_, Message> {
         // Tab bar
         let tab_bar = row(
             Tab::all().iter().map(|&tab| {
@@ -266,7 +282,7 @@ impl MyBudsApp {
             .into()
     }
 
-    pub fn theme(&self) -> Theme {
+    pub fn theme(&self, _window_id: iced::window::Id) -> Theme {
         theme::app_theme()
     }
 

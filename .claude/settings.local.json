@@ -5,7 +5,12 @@
       "Bash(cargo check:*)",
       "Bash(cargo test:*)",
       "Bash(cargo doc:*)",
-      "Bash(cargo build:*)"
+      "Bash(cargo build:*)",
+      "mcp__fetch__fetch-fetch",
+      "WebFetch(domain:docs.rs)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:discourse.iced.rs)"
     ]
   }
 }

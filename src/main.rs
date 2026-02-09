@@ -73,6 +73,8 @@ fn run_gui_mode(
     prop_tx: mpsc::Sender<(String, String, String)>,
     prop_rx: mpsc::Receiver<(String, String, String)>,
 ) -> Result<()> {
+    use std::sync::atomic::Ordering;
+
     let props_clone = props.clone();
 
     // Shared tray flags for tray <-> iced communication
@@ -96,21 +98,12 @@ fn run_gui_mode(
         });
     });
 
-    // Run iced GUI on main thread
-    let mut window_settings = iced::window::Settings::default();
-    if let Ok(icon) = iced::window::icon::from_file_data(
-        include_bytes!("../assets/icon-128.png"),
-        None,
-    ) {
-        window_settings.icon = Some(icon);
-    }
-
-    iced::application("MyBuds", MyBudsApp::update, MyBudsApp::view)
+    // Run iced daemon on main thread.
+    // Unlike iced::application, the daemon does NOT exit when the last window
+    // is closed — it keeps running so we can reopen from the system tray.
+    iced::daemon("MyBuds", MyBudsApp::update, MyBudsApp::view)
         .theme(MyBudsApp::theme)
         .subscription(MyBudsApp::subscription)
-        .window(window_settings)
-        .window_size((480.0, 600.0))
-        .exit_on_close_request(false)
         .run_with(move || MyBudsApp::new(props.clone(), Some(prop_tx), Some(tray_flags)))?;
 
     Ok(())
