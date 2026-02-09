@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=MyBuds
+Comment=Desktop manager for Huawei FreeBuds and AirPods
+Exec=mybuds
+Icon=mybuds
+Terminal=false
+Type=Application
+Categories=Utility;Audio;
+Keywords=bluetooth;headphones;earbuds;freebuds;airpods;

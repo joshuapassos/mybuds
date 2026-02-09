@@ -1,4 +1,8 @@
 
+use super::airpods::{
+    AirPodsAncHandler, AirPodsBatteryHandler, AirPodsConversationAwarenessHandler,
+    AirPodsEarDetectionHandler, AirPodsInfoHandler, AirPodsPersonalizedVolumeHandler,
+};
 use super::anc::{AncHandler, AncLegacyChangeHandler};
 use super::battery::BatteryHandler;
 use super::config::{AutoPauseHandler, LowLatencyHandler, SoundQualityHandler};
@@ -8,18 +12,31 @@ use super::gestures::{LongTapSplitHandler, SwipeGestureHandler, TapActionHandler
 use super::handler::DeviceHandler;
 use super::info::InfoHandler;
 
+/// Bluetooth transport type.
+#[derive(Debug, Clone, Copy)]
+pub enum Transport {
+    /// RFCOMM/SPP (Huawei devices). Value is the channel number.
+    Rfcomm(u16),
+    /// L2CAP (AirPods). Value is the PSM.
+    L2cap(u16),
+}
+
 /// Device profile configuration.
 pub struct DeviceProfile {
     pub name: &'static str,
-    pub spp_port: u16,
+    pub transport: Transport,
     pub handlers: Vec<Box<dyn DeviceHandler>>,
 }
+
+// ============================================================
+// Huawei / HONOR profiles
+// ============================================================
 
 /// Build handlers for FreeBuds Pro 3 / Pro 4 / FreeClip.
 pub fn freebuds_pro3() -> DeviceProfile {
     DeviceProfile {
         name: "FreeBuds Pro 3",
-        spp_port: 1,
+        transport: Transport::Rfcomm(1),
         handlers: vec![
             Box::new(InfoHandler),
             Box::new(AncHandler::new(true, true, true)),
@@ -46,7 +63,7 @@ pub fn freebuds_pro3() -> DeviceProfile {
 pub fn freebuds_pro2() -> DeviceProfile {
     DeviceProfile {
         name: "FreeBuds Pro 2",
-        spp_port: 16,
+        transport: Transport::Rfcomm(16),
         handlers: vec![
             Box::new(InfoHandler),
             Box::new(AncHandler::new(true, true, true)),
@@ -73,7 +90,7 @@ pub fn freebuds_pro2() -> DeviceProfile {
 pub fn freebuds_5i() -> DeviceProfile {
     DeviceProfile {
         name: "FreeBuds 5i",
-        spp_port: 16,
+        transport: Transport::Rfcomm(16),
         handlers: vec![
             Box::new(InfoHandler),
             Box::new(BatteryHandler::default()),
@@ -101,7 +118,7 @@ pub fn freebuds_5i() -> DeviceProfile {
 pub fn freebuds_6i() -> DeviceProfile {
     DeviceProfile {
         name: "FreeBuds 6i",
-        spp_port: 16,
+        transport: Transport::Rfcomm(16),
         handlers: vec![
             Box::new(InfoHandler),
             Box::new(BatteryHandler::default()),
@@ -129,7 +146,7 @@ pub fn freebuds_6i() -> DeviceProfile {
 pub fn freebuds_4i() -> DeviceProfile {
     DeviceProfile {
         name: "FreeBuds 4i",
-        spp_port: 16,
+        transport: Transport::Rfcomm(16),
         handlers: vec![
             Box::new(InfoHandler),
             Box::new(AncHandler::default()),
@@ -146,7 +163,7 @@ pub fn freebuds_4i() -> DeviceProfile {
 pub fn freebuds_se2() -> DeviceProfile {
     DeviceProfile {
         name: "FreeBuds SE 2",
-        spp_port: 1,
+        transport: Transport::Rfcomm(1),
         handlers: vec![
             Box::new(InfoHandler),
             Box::new(BatteryHandler::default()),
@@ -169,7 +186,7 @@ pub fn freebuds_se2() -> DeviceProfile {
 pub fn generic_probe() -> DeviceProfile {
     DeviceProfile {
         name: "Generic Huawei",
-        spp_port: 16,
+        transport: Transport::Rfcomm(16),
         handlers: vec![
             Box::new(InfoHandler),
             Box::new(BatteryHandler::default()),
@@ -190,7 +207,7 @@ pub fn generic_probe() -> DeviceProfile {
 pub fn freebuds_5() -> DeviceProfile {
     DeviceProfile {
         name: "FreeBuds 5",
-        spp_port: 1,
+        transport: Transport::Rfcomm(1),
         handlers: vec![
             Box::new(InfoHandler),
             Box::new(BatteryHandler::default()),
@@ -213,18 +230,77 @@ pub fn freebuds_5() -> DeviceProfile {
     }
 }
 
+// ============================================================
+// AirPods profiles
+// ============================================================
+
+/// AirPods Pro 2nd Gen / AirPods Pro 3rd Gen (full features).
+pub fn airpods_pro() -> DeviceProfile {
+    DeviceProfile {
+        name: "AirPods Pro",
+        transport: Transport::L2cap(0x1001),
+        handlers: vec![
+            Box::new(AirPodsInfoHandler),
+            Box::new(AirPodsBatteryHandler),
+            Box::new(AirPodsEarDetectionHandler),
+            Box::new(AirPodsAncHandler::new(true)),
+            Box::new(AirPodsConversationAwarenessHandler),
+            Box::new(AirPodsPersonalizedVolumeHandler),
+        ],
+    }
+}
+
+/// AirPods Max (full features, no ear detection differences).
+pub fn airpods_max() -> DeviceProfile {
+    DeviceProfile {
+        name: "AirPods Max",
+        transport: Transport::L2cap(0x1001),
+        handlers: vec![
+            Box::new(AirPodsInfoHandler),
+            Box::new(AirPodsBatteryHandler),
+            Box::new(AirPodsEarDetectionHandler),
+            Box::new(AirPodsAncHandler::new(true)),
+            Box::new(AirPodsConversationAwarenessHandler),
+            Box::new(AirPodsPersonalizedVolumeHandler),
+        ],
+    }
+}
+
+/// Generic AirPods (basic features: battery + ear detection).
+pub fn airpods_generic() -> DeviceProfile {
+    DeviceProfile {
+        name: "AirPods",
+        transport: Transport::L2cap(0x1001),
+        handlers: vec![
+            Box::new(AirPodsInfoHandler),
+            Box::new(AirPodsBatteryHandler),
+            Box::new(AirPodsEarDetectionHandler),
+        ],
+    }
+}
+
+// ============================================================
+// Device lookup
+// ============================================================
+
 /// Get device profile by Bluetooth device name.
 pub fn profile_for_device(name: &str) -> DeviceProfile {
     match name {
+        // Huawei / HONOR
         "HUAWEI FreeBuds Pro 3" | "HUAWEI FreeBuds Pro 4" | "HUAWEI FreeClip" => freebuds_pro3(),
         "HUAWEI FreeBuds Pro 2" | "HUAWEI FreeBuds Pro" => freebuds_pro2(),
         "HUAWEI FreeBuds 5" => freebuds_5(),
         "HUAWEI FreeBuds 5i" => freebuds_5i(),
         "HUAWEI FreeBuds 6i" => freebuds_6i(),
-        "HUAWEI FreeBuds 4i" | "HONOR Earbuds 2" | "HONOR Earbuds 2 SE" | "HONOR Earbuds 2 Lite" => {
-            freebuds_4i()
-        }
+        "HUAWEI FreeBuds 4i" | "HONOR Earbuds 2" | "HONOR Earbuds 2 SE"
+        | "HONOR Earbuds 2 Lite" => freebuds_4i(),
         "HUAWEI FreeBuds SE 2" => freebuds_se2(),
+
+        // AirPods
+        n if n.contains("AirPods Pro") => airpods_pro(),
+        n if n.contains("AirPods Max") => airpods_max(),
+        n if n.contains("AirPods") => airpods_generic(),
+
         _ => generic_probe(),
     }
 }

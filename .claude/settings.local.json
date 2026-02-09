@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "mcp__perplexity__perplexity-perplexity_ask"
+      "mcp__perplexity__perplexity-perplexity_ask",
+      "Bash(cargo check:*)",
+      "Bash(cargo test:*)",
+      "Bash(cargo doc:*)",
+      "Bash(cargo build:*)"
     ]
   }
 }

@@ -2518,6 +2518,7 @@ dependencies = [
  "crossterm",
  "dirs 6.0.0",
  "iced",
+ "image",
  "ksni",
  "libc",
  "notify-rust",

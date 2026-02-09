@@ -65,16 +65,11 @@ impl ksni::Tray for MyBudsTray {
         }
     }
 
-    fn icon_name(&self) -> String {
-        "audio-headphones".into()
-    }
-
     fn icon_pixmap(&self) -> Vec<ksni::Icon> {
-        let size = 22;
-        let data = icon::generate_tray_icon(size);
+        let (width, height, data) = icon::tray_icon();
         vec![ksni::Icon {
-            width: size as i32,
-            height: size as i32,
+            width,
+            height,
             data,
         }]
     }

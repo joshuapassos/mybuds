@@ -1,3 +1,4 @@
+pub mod airpods;
 pub mod anc;
 pub mod battery;
 pub mod config;

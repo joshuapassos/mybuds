@@ -97,11 +97,20 @@ fn run_gui_mode(
     });
 
     // Run iced GUI on main thread
+    let mut window_settings = iced::window::Settings::default();
+    if let Ok(icon) = iced::window::icon::from_file_data(
+        include_bytes!("../assets/icon-128.png"),
+        None,
+    ) {
+        window_settings.icon = Some(icon);
+    }
+
     iced::application("MyBuds", MyBudsApp::update, MyBudsApp::view)
         .theme(MyBudsApp::theme)
         .subscription(MyBudsApp::subscription)
+        .window(window_settings)
         .window_size((480.0, 600.0))
-        .exit_on_close_request(true)
+        .exit_on_close_request(false)
         .run_with(move || MyBudsApp::new(props.clone(), Some(prop_tx), Some(tray_flags)))?;
 
     Ok(())
@@ -156,8 +165,8 @@ async fn run_bluetooth_with_tray(
 
     let profile = profile_for_device(&device_name);
     info!(
-        "Device profile: {}, SPP port: {}",
-        profile.name, profile.spp_port
+        "Device profile: {}, transport: {:?}",
+        profile.name, profile.transport
     );
 
     let mut bt_manager = bluetooth::BluetoothManager::new(address, profile, props.clone(), prop_rx);
@@ -212,8 +221,8 @@ async fn run_bluetooth_headless(
 
     let profile = profile_for_device(&device_name);
     info!(
-        "Device profile: {}, SPP port: {}",
-        profile.name, profile.spp_port
+        "Device profile: {}, transport: {:?}",
+        profile.name, profile.transport
     );
 
     let mut bt_manager = bluetooth::BluetoothManager::new(address, profile, props.clone(), prop_rx);

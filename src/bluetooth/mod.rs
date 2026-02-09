@@ -1,4 +1,5 @@
 pub mod connection;
+pub mod l2cap;
 pub mod scanner;
 
 use std::time::Duration;
@@ -7,9 +8,10 @@ use anyhow::Result;
 use bluer::Address;
 use tracing::{info, warn};
 
-use crate::device::models::DeviceProfile;
+use crate::device::models::{DeviceProfile, Transport};
 use crate::device::DeviceManager;
 use connection::RfcommConnection;
+use l2cap::L2capConnection;
 
 /// Reset the BT link to clear stale RFCOMM state.
 /// Disconnects and reconnects the device to force BlueZ to clean up.
@@ -26,7 +28,7 @@ async fn reset_bt_link(address: Address) -> anyhow::Result<()> {
 
     info!("Reconnecting device...");
     device.connect().await?;
-    // Wait longer for RFCOMM/SPP profiles to re-register after reconnect
+    // Wait longer for profiles to re-register after reconnect
     tokio::time::sleep(Duration::from_secs(5)).await;
     info!("BT link reset complete");
     Ok(())
@@ -36,7 +38,7 @@ async fn reset_bt_link(address: Address) -> anyhow::Result<()> {
 pub struct BluetoothManager {
     device_manager: DeviceManager,
     address: Address,
-    spp_port: u8,
+    transport: Transport,
     prop_rx: Option<tokio::sync::mpsc::Receiver<(String, String, String)>>,
 }
 
@@ -47,13 +49,13 @@ impl BluetoothManager {
         props: crate::device::handler::PropertyStore,
         prop_rx: tokio::sync::mpsc::Receiver<(String, String, String)>,
     ) -> Self {
-        let spp_port = profile.spp_port as u8;
+        let transport = profile.transport;
         let device_manager = DeviceManager::new(profile.handlers, props);
 
         Self {
             device_manager,
             address,
-            spp_port,
+            transport,
             prop_rx: Some(prop_rx),
         }
     }
@@ -69,9 +71,16 @@ impl BluetoothManager {
         // Reset channels so run() can be called again after reconnect
         self.device_manager.reset_channels();
 
+        match self.transport {
+            Transport::Rfcomm(port) => self.run_rfcomm(port as u8).await,
+            Transport::L2cap(psm) => self.run_l2cap(psm).await,
+        }
+    }
+
+    async fn run_rfcomm(&mut self, port: u8) -> Result<()> {
         // Try the configured channel first, then fallback to the other common one
-        let alt = if self.spp_port == 16 { 1 } else { 16 };
-        let channels = [self.spp_port, alt];
+        let alt = if port == 16 { 1 } else { 16 };
+        let channels = [port, alt];
 
         let mut conn_result = None;
         for &ch in &channels {
@@ -91,9 +100,31 @@ impl BluetoothManager {
             None => anyhow::bail!("No RFCOMM channel worked (tried {:?})", &channels),
         };
 
-        let (mut incoming_rx, outgoing_tx, read_task, write_task) = conn.into_split();
+        let (incoming_rx, outgoing_tx, read_task, write_task) = conn.into_split();
+        self.run_packet_loop(incoming_rx, outgoing_tx, read_task, write_task)
+            .await
+    }
 
-        // Connect the device manager's outgoing packets to the RFCOMM write channel
+    async fn run_l2cap(&mut self, psm: u16) -> Result<()> {
+        let conn = L2capConnection::connect(self.address, psm).await?;
+
+        // Perform AAP protocol initialization (handshake + feature flags + notifications)
+        conn.initialize().await?;
+
+        let (incoming_rx, outgoing_tx, read_task, write_task) = conn.into_split();
+        self.run_packet_loop(incoming_rx, outgoing_tx, read_task, write_task)
+            .await
+    }
+
+    /// Common packet routing loop (works for both RFCOMM and L2CAP).
+    async fn run_packet_loop(
+        &mut self,
+        mut incoming_rx: tokio::sync::mpsc::Receiver<crate::protocol::HuaweiSppPacket>,
+        outgoing_tx: tokio::sync::mpsc::Sender<crate::protocol::HuaweiSppPacket>,
+        read_task: tokio::task::JoinHandle<()>,
+        write_task: tokio::task::JoinHandle<()>,
+    ) -> Result<()> {
+        // Connect the device manager's outgoing packets to the write channel
         let mut dm_packet_rx = self.device_manager.take_packet_rx().unwrap();
         let outgoing_tx_clone = outgoing_tx.clone();
         let forward_task = tokio::spawn(async move {
@@ -158,7 +189,7 @@ impl BluetoothManager {
     }
 
     /// Run with auto-reconnect. Retries on disconnect with exponential backoff.
-    /// After repeated failures, resets the BT link to clear stale RFCOMM state.
+    /// After repeated failures, resets the BT link to clear stale state.
     pub async fn run_with_reconnect(&mut self) {
         let mut backoff = Duration::from_secs(2);
         let max_backoff = Duration::from_secs(30);

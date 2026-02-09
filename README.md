@@ -1,23 +1,28 @@
 # MyBuds
 
-Desktop manager for Huawei FreeBuds and HONOR Earbuds headphones on Linux. Built with Rust.
+Desktop manager for Huawei FreeBuds, HONOR Earbuds, and Apple AirPods headphones on Linux. Built with Rust.
 
-Based on [OpenFreebuds](https://github.com/melianmiko/OpenFreebuds) by melianmiko — rewritten from Python to Rust for better performance and native system integration.
+Based on [OpenFreebuds](https://github.com/melianmiko/OpenFreebuds) by melianmiko and [LibrePods](https://github.com/kavishdevar/librepods) by kavishdevar.
 
 ## Features
 
 - **GUI** (Iced) and **TUI** (Ratatui) interfaces
 - **System tray** integration with battery indicator
-- ANC mode switching (Normal / Cancellation / Awareness)
+- ANC mode switching (Normal / Cancellation / Awareness / Adaptive)
 - Battery monitoring (global + per-earbud + case)
 - Equalizer presets
 - Gesture customization (double tap, triple tap, long tap, swipe)
 - Dual-device connection management
+- Ear detection (AirPods)
+- Conversational Awareness (AirPods Pro/Max)
+- Personalized Volume (AirPods Pro/Max)
 - Auto-pause, low latency, sound quality preferences
 - Auto-reconnect with exponential backoff
 - Desktop notifications
 
 ## Supported Devices
+
+### Huawei / HONOR
 
 | Feature | Pro 3 / Pro 4 / FreeClip | Pro 2 / Pro | 5i | 6i | 4i / HONOR Earbuds 2 | SE 2 | 5 |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
@@ -33,12 +38,27 @@ Based on [OpenFreebuds](https://github.com/melianmiko/OpenFreebuds) by melianmik
 | Sound Quality | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x: | :x: | :white_check_mark: |
 | Dual Connect | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x: | :x: | :x: |
 
+Connection: RFCOMM/SPP (Huawei proprietary protocol)
+
+### Apple AirPods
+
+| Feature | AirPods Pro (2nd Gen) | AirPods Pro (3rd Gen) | AirPods Max | Other AirPods |
+|---|:---:|:---:|:---:|:---:|
+| Battery (L/R/Case) | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| Ear Detection | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| Device Info | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| ANC (Off/ANC/Transparency/Adaptive) | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x: |
+| Conversational Awareness | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x: |
+| Personalized Volume | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x: |
+
+Connection: L2CAP PSM 0x1001 (Apple AACP protocol)
+
 Devices not listed above will use a **generic probe** profile that attempts to detect available features automatically.
 
 ## Requirements
 
 - Linux with BlueZ (Bluetooth stack)
-- Paired Huawei FreeBuds or HONOR Earbuds device
+- Paired headphones (Huawei FreeBuds, HONOR Earbuds, or Apple AirPods)
 - D-Bus (for system tray / StatusNotifierItem)
 
 ## Building
@@ -82,10 +102,10 @@ In TUI mode, logs are written to `/tmp/mybuds.log`.
 
 ```
 src/
-├── bluetooth/     # BlueZ RFCOMM/SPP connection and device scanning
-├── protocol/      # Huawei SPP wire protocol (packet framing, CRC16, command IDs)
-├── device/        # Feature handlers (ANC, battery, EQ, gestures, etc.)
-│   └── models/    # Per-device profiles defining supported features
+├── bluetooth/     # BlueZ connections (RFCOMM for Huawei, L2CAP for AirPods)
+├── protocol/      # Wire protocols (Huawei SPP + Apple AACP)
+├── device/        # Feature handlers (ANC, battery, EQ, gestures, AirPods features)
+│   └── models/    # Per-device profiles with Transport enum (Rfcomm/L2cap)
 ├── ui/            # Iced GUI (pages + widgets)
 ├── tui/           # Ratatui terminal UI
 ├── tray/          # System tray (ksni / StatusNotifierItem)
@@ -94,7 +114,8 @@ src/
 
 ## Acknowledgments
 
-This project is based on the protocol reverse-engineering and implementation work done in [OpenFreebuds](https://github.com/melianmiko/OpenFreebuds) by [melianmiko](https://github.com/melianmiko).
+- [OpenFreebuds](https://github.com/melianmiko/OpenFreebuds) by [melianmiko](https://github.com/melianmiko) — Huawei SPP protocol reverse-engineering
+- [LibrePods](https://github.com/kavishdevar/librepods) by [kavishdevar](https://github.com/kavishdevar) — Apple AACP protocol reverse-engineering
 
 ## License
 

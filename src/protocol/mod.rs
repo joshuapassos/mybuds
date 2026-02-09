@@ -1,3 +1,4 @@
+pub mod aap;
 pub mod commands;
 pub mod crc;
 pub mod packet;

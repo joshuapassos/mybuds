@@ -26,7 +26,7 @@ pub fn view(config: &HashMap<String, String>) -> Element<'_, Message> {
         column![
             text("About").size(16),
             text("MyBuds v0.1.0").size(12),
-            text("Manages Huawei FreeBuds headphones via SPP protocol").size(12),
+            text("Manages Huawei FreeBuds and Apple AirPods headphones").size(12),
             text("Based on the OpenFreebuds project").size(12),
         ]
         .spacing(4),

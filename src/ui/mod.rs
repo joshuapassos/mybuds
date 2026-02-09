@@ -58,8 +58,13 @@ pub enum Message {
     SetAutoPause(bool),
     SetGesture(String, String),
     SetDualConnect(bool),
+    // AirPods-specific
+    SetConversationAwareness(bool),
+    SetPersonalizedVolume(bool),
     /// Property store snapshot received from async task.
     PropsRefreshed(HashMap<String, HashMap<String, String>>),
+    /// Window close button clicked — hide to tray instead of exiting.
+    WindowCloseRequested(iced::window::Id),
     Tick,
 }
 
@@ -75,7 +80,13 @@ pub struct MyBudsApp {
     actions: HashMap<String, String>,
     config: HashMap<String, String>,
     dual_connect: HashMap<String, String>,
+    // AirPods-specific
+    ear_detection: HashMap<String, String>,
+    conversation_awareness: HashMap<String, String>,
+    personalized_volume: HashMap<String, String>,
     connected: bool,
+    /// Main window ID (captured on first close request)
+    window_id: Option<iced::window::Id>,
     /// Channel to send property change requests
     property_tx: Option<tokio::sync::mpsc::Sender<(String, String, String)>>,
     /// Tray communication flags
@@ -99,7 +110,11 @@ impl MyBudsApp {
                 actions: HashMap::new(),
                 config: HashMap::new(),
                 dual_connect: HashMap::new(),
+                ear_detection: HashMap::new(),
+                conversation_awareness: HashMap::new(),
+                personalized_volume: HashMap::new(),
                 connected: false,
+                window_id: None,
                 property_tx,
                 tray_flags,
             },
@@ -147,11 +162,30 @@ impl MyBudsApp {
             Message::SetDualConnect(enabled) => {
                 self.send_property("dual_connect", "enabled", if enabled { "true" } else { "false" });
             }
+            Message::SetConversationAwareness(enabled) => {
+                self.send_property("conversation_awareness", "enabled", if enabled { "true" } else { "false" });
+            }
+            Message::SetPersonalizedVolume(enabled) => {
+                self.send_property("personalized_volume", "enabled", if enabled { "true" } else { "false" });
+            }
+            Message::WindowCloseRequested(id) => {
+                self.window_id = Some(id);
+                return iced::window::change_mode(id, iced::window::Mode::Hidden);
+            }
             Message::Tick => {
                 // Check tray quit signal
                 if let Some(ref flags) = self.tray_flags {
                     if flags.quit_app.swap(false, Ordering::Relaxed) {
                         return iced::exit();
+                    }
+                    // Check tray show-window signal
+                    if flags.show_window.swap(false, Ordering::Relaxed) {
+                        if let Some(id) = self.window_id {
+                            return Task::batch([
+                                iced::window::change_mode(id, iced::window::Mode::Windowed),
+                                iced::window::gain_focus(id),
+                            ]);
+                        }
                     }
                 }
 
@@ -173,6 +207,9 @@ impl MyBudsApp {
                 self.actions = store.get("action").cloned().unwrap_or_default();
                 self.config = store.get("config").cloned().unwrap_or_default();
                 self.dual_connect = store.get("dual_connect").cloned().unwrap_or_default();
+                self.ear_detection = store.get("ear_detection").cloned().unwrap_or_default();
+                self.conversation_awareness = store.get("conversation_awareness").cloned().unwrap_or_default();
+                self.personalized_volume = store.get("personalized_volume").cloned().unwrap_or_default();
                 self.connected = !self.battery.is_empty();
             }
         }
@@ -200,7 +237,15 @@ impl MyBudsApp {
 
         // Page content
         let page_content: Element<'_, Message> = match self.current_tab {
-            Tab::Home => pages::home::view(&self.battery, &self.anc, &self.info, self.connected),
+            Tab::Home => pages::home::view(
+                &self.battery,
+                &self.anc,
+                &self.info,
+                &self.ear_detection,
+                &self.conversation_awareness,
+                &self.personalized_volume,
+                self.connected,
+            ),
             Tab::Sound => pages::sound::view(&self.sound, &self.config),
             Tab::Gestures => pages::gestures::view(&self.actions),
             Tab::DualConnect => pages::dual_connect::view(&self.dual_connect),
@@ -226,7 +271,10 @@ impl MyBudsApp {
     }
 
     pub fn subscription(&self) -> iced::Subscription<Message> {
-        iced::time::every(std::time::Duration::from_secs(1)).map(|_| Message::Tick)
+        iced::Subscription::batch([
+            iced::time::every(std::time::Duration::from_secs(1)).map(|_| Message::Tick),
+            iced::window::close_requests().map(Message::WindowCloseRequested),
+        ])
     }
 
     fn send_property(&self, group: &str, prop: &str, value: &str) {

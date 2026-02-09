@@ -34,6 +34,9 @@ crossterm = "0.28"
 # CLI
 clap = { version = "4", features = ["derive"] }
 
+# Image decoding (matches iced's dependency)
+image = { version = "0.24", default-features = false, features = ["png"] }
+
 # Utilities
 anyhow = "1"
 thiserror = "2"

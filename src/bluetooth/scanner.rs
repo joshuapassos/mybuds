@@ -53,4 +53,5 @@ pub fn is_known_device(name: &str) -> bool {
         || name.starts_with("HUAWEI FreeClip")
         || name.starts_with("HONOR Earbuds")
         || name.starts_with("HUAWEI FreeLace")
+        || name.contains("AirPods")
 }
