@@ -1,6 +1,7 @@
 mod bluetooth;
 mod config;
 mod device;
+mod instance_lock;
 mod protocol;
 mod tray;
 mod tui;
@@ -29,6 +30,15 @@ struct Cli {
 }
 
 fn main() -> Result<()> {
+    // Acquire instance lock — only one instance allowed
+    let _lock = match instance_lock::InstanceLock::acquire() {
+        Ok(lock) => lock,
+        Err(e) => {
+            eprintln!("{}", e);
+            std::process::exit(1);
+        }
+    };
+
     let cli = Cli::parse();
 
     // Initialize logging — in TUI mode, write to a log file to avoid corrupting the terminal
