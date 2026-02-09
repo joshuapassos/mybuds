@@ -1,6 +1,15 @@
 # MyBuds
 
+<p align="center">
+  <img src="assets/icon-128.png" width="20%" />
+</p>
+
 Desktop manager for Huawei FreeBuds, HONOR Earbuds, and Apple AirPods headphones on Linux. Built with Rust.
+
+<p align="center">
+<img src="assets/Screenshot-1.png" width="30%" />
+  <img src="assets/Screenshot-4.png" width="80%" />
+</p>
 
 Based on [OpenFreebuds](https://github.com/melianmiko/OpenFreebuds) by melianmiko and [LibrePods](https://github.com/kavishdevar/librepods) by kavishdevar.
 
@@ -15,12 +24,12 @@ Based on [OpenFreebuds](https://github.com/melianmiko/OpenFreebuds) by melianmik
 ## Features
 
 - **GUI** (Iced) and **TUI** (Ratatui) interfaces
-- **System tray** integration with battery indicator
+- **System tray** integration with battery indicator, ANC quick switch, and Dual Connect toggle
 - ANC mode switching (Normal / Cancellation / Awareness / Adaptive)
 - Battery monitoring (global + per-earbud + case)
 - Equalizer presets
 - Gesture customization (double tap, triple tap, long tap, swipe)
-- Dual-device connection management
+- Dual-device connection management with visual device cards
 - Ear detection (AirPods)
 - Conversational Awareness (AirPods Pro/Max)
 - Personalized Volume (AirPods Pro/Max)
@@ -44,7 +53,7 @@ Based on [OpenFreebuds](https://github.com/melianmiko/OpenFreebuds) by melianmik
 | Auto Pause | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x: | :white_check_mark: |
 | Low Latency | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x: | :white_check_mark: | :white_check_mark: |
 | Sound Quality | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x: | :x: | :white_check_mark: |
-| Dual Connect | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x: | :x: | :x: |
+| Dual Connect | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x: | :x: | :white_check_mark: |
 
 Connection: RFCOMM/SPP (Huawei proprietary protocol)
 
