@@ -85,8 +85,8 @@ pub struct MyBudsApp {
     conversation_awareness: HashMap<String, String>,
     personalized_volume: HashMap<String, String>,
     connected: bool,
-    /// Currently open main window (None = hidden in tray)
-    main_window: Option<iced::window::Id>,
+    /// Currently open main window
+    main_window: iced::window::Id,
     /// Channel to send property change requests
     property_tx: Option<tokio::sync::mpsc::Sender<(String, String, String)>>,
     /// Tray communication flags
@@ -102,6 +102,7 @@ fn window_settings() -> iced::window::Settings {
     iced::window::Settings {
         size: iced::Size::new(480.0, 600.0),
         icon,
+        exit_on_close_request: false, // We handle close requests to minimize instead
         ..Default::default()
     }
 }
@@ -130,7 +131,7 @@ impl MyBudsApp {
                 conversation_awareness: HashMap::new(),
                 personalized_volume: HashMap::new(),
                 connected: false,
-                main_window: Some(id),
+                main_window: id,
                 property_tx,
                 tray_flags,
             },
@@ -184,10 +185,10 @@ impl MyBudsApp {
             Message::SetPersonalizedVolume(enabled) => {
                 self.send_property("personalized_volume", "enabled", if enabled { "true" } else { "false" });
             }
-            Message::WindowCloseRequested(id) => {
-                // Close the window but keep the daemon alive
-                self.main_window = None;
-                return iced::window::close(id);
+            Message::WindowCloseRequested(_id) => {
+                // Minimize window instead of closing (keeps daemon alive)
+                // Note: This works on GNOME, KDE, Sway but not on Niri (tiling compositors)
+                return iced::window::minimize(self.main_window, true);
             }
             Message::Tick => {
                 if let Some(ref flags) = self.tray_flags {
@@ -197,11 +198,11 @@ impl MyBudsApp {
                     }
                     // Check tray show-window signal
                     if flags.show_window.swap(false, Ordering::Relaxed) {
-                        if self.main_window.is_none() {
-                            let (id, open_task) = iced::window::open(window_settings());
-                            self.main_window = Some(id);
-                            return open_task.discard();
-                        }
+                        // Restore window: unminimize and bring to focus
+                        return Task::batch([
+                            iced::window::minimize(self.main_window, false),
+                            iced::window::gain_focus(self.main_window),
+                        ]);
                     }
                 }
 

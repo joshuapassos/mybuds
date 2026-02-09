@@ -4,6 +4,14 @@ Desktop manager for Huawei FreeBuds, HONOR Earbuds, and Apple AirPods headphones
 
 Based on [OpenFreebuds](https://github.com/melianmiko/OpenFreebuds) by melianmiko and [LibrePods](https://github.com/kavishdevar/librepods) by kavishdevar.
 
+## Screenshots
+
+<p align="center">
+  <img src="assets/Screenshot-1.png" width="30%" />
+  <img src="assets/Screenshot-2.png" width="30%" />
+  <img src="assets/Screenshot-3.png" width="30%" />
+</p>
+
 ## Features
 
 - **GUI** (Iced) and **TUI** (Ratatui) interfaces
