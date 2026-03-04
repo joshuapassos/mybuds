@@ -166,7 +166,7 @@ impl DeviceManager {
 
     /// Clear all properties (call on disconnect so UI shows disconnected state).
     pub async fn clear_props(&self) {
-        let mut store = self.props.lock().await;
+        let mut store = self.props.lock().unwrap();
         store.clear();
     }
 

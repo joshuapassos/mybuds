@@ -5,8 +5,10 @@ edition = "2021"
 description = "Desktop manager for Huawei FreeBuds headphones"
 
 [dependencies]
-# GUI
-iced = { version = "0.13", features = ["tokio", "svg", "image"] }
+# GUI (Relm4 + GTK4 + Libadwaita)
+relm4 = { version = "0.9", features = ["libadwaita"] }
+gtk4 = "0.9"
+libadwaita = "0.7"
 
 # Bluetooth (Linux - RFCOMM/SPP via BlueZ)
 bluer = { version = "0.17", features = ["bluetoothd", "rfcomm"] }
@@ -35,7 +37,7 @@ crossterm = "0.28"
 # CLI
 clap = { version = "4", features = ["derive"] }
 
-# Image decoding (matches iced's dependency)
+# Image decoding
 image = { version = "0.24", default-features = false, features = ["png"] }
 
 # Utilities

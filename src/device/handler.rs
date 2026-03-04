@@ -1,9 +1,8 @@
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use anyhow::Result;
 use async_trait::async_trait;
-use tokio::sync::Mutex;
 
 use crate::protocol::commands::CommandId;
 use crate::protocol::HuaweiSppPacket;
@@ -53,7 +52,7 @@ pub async fn put_properties(
     group: &str,
     values: HashMap<String, String>,
 ) {
-    let mut store = props.lock().await;
+    let mut store = props.lock().unwrap();
     let entry = store.entry(group.to_string()).or_default();
     for (k, v) in values {
         entry.insert(k, v);

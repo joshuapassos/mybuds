@@ -10,7 +10,11 @@
       "WebFetch(domain:docs.rs)",
       "WebSearch",
       "WebFetch(domain:github.com)",
-      "WebFetch(domain:discourse.iced.rs)"
+      "WebFetch(domain:discourse.iced.rs)",
+      "Bash(grep:*)",
+      "Bash(curl:*)",
+      "mcp__context7__context7-resolve-library-id",
+      "mcp__context7__context7-query-docs"
     ]
   }
 }

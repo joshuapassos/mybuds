@@ -1,12 +1,25 @@
 use std::collections::HashMap;
 
-use iced::widget::{column, container, row, text};
-use iced::{Element, Length};
+use gtk4::prelude::*;
+use libadwaita as adw;
+use libadwaita::prelude::*;
 
-use crate::ui::Message;
+pub fn build(container: &gtk4::Box, info: &HashMap<String, String>) {
+    while let Some(child) = container.first_child() {
+        container.remove(&child);
+    }
 
-pub fn view(info: &HashMap<String, String>) -> Element<'_, Message> {
-    let mut content = column![text("Device Info").size(18)].spacing(8);
+    let clamp = adw::Clamp::builder()
+        .maximum_size(500)
+        .margin_top(12)
+        .margin_bottom(12)
+        .margin_start(12)
+        .margin_end(12)
+        .build();
+
+    let group = adw::PreferencesGroup::builder()
+        .title("Device Info")
+        .build();
 
     let fields = [
         ("device_model", "Model"),
@@ -20,35 +33,25 @@ pub fn view(info: &HashMap<String, String>) -> Element<'_, Message> {
 
     for (key, label) in &fields {
         if let Some(value) = info.get(*key) {
-            let value = value.clone();
-            content = content.push(
-                row![
-                    text(format!("{}:", label))
-                        .size(14)
-                        .width(Length::Fixed(150.0)),
-                    text(value).size(14),
-                ]
-                .spacing(8),
-            );
+            let row = adw::ActionRow::builder()
+                .title(*label)
+                .subtitle(value)
+                .build();
+            group.add(&row);
         }
     }
 
-    // Show any extra fields
+    // Extra fields
     for (key, value) in info {
         if !fields.iter().any(|(k, _)| k == key) {
-            let key = key.clone();
-            let value = value.clone();
-            content = content.push(
-                row![
-                    text(format!("{}:", key))
-                        .size(14)
-                        .width(Length::Fixed(150.0)),
-                    text(value).size(14),
-                ]
-                .spacing(8),
-            );
+            let row = adw::ActionRow::builder()
+                .title(key.as_str())
+                .subtitle(value)
+                .build();
+            group.add(&row);
         }
     }
 
-    container(content).padding(20).width(Length::Fill).into()
+    clamp.set_child(Some(&group));
+    container.append(&clamp);
 }

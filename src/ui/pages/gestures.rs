@@ -1,134 +1,180 @@
 use std::collections::HashMap;
 
-use iced::widget::{column, container, horizontal_rule, pick_list, row, text};
-use iced::{Element, Length};
+use gtk4::prelude::*;
+use libadwaita as adw;
+use libadwaita::prelude::*;
+use relm4::ComponentSender;
 
-use crate::ui::Message;
+use crate::ui::{Message, MyBudsApp};
 
-pub fn view(actions: &HashMap<String, String>) -> Element<'_, Message> {
-    let mut content = column![text("Gesture Settings").size(18)].spacing(12);
+pub fn build(
+    container: &gtk4::Box,
+    actions: &HashMap<String, String>,
+    sender: &ComponentSender<MyBudsApp>,
+) {
+    while let Some(child) = container.first_child() {
+        container.remove(&child);
+    }
+
+    let clamp = adw::Clamp::builder()
+        .maximum_size(500)
+        .margin_top(12)
+        .margin_bottom(12)
+        .margin_start(12)
+        .margin_end(12)
+        .build();
+
+    let content = gtk4::Box::new(gtk4::Orientation::Vertical, 12);
 
     // Double tap
     let dt_options = parse_options(actions.get("double_tap_options"));
     if !dt_options.is_empty() {
-        content = content.push(text("Double Tap").size(16));
-        content = content.push(gesture_row(
-            "Left:",
+        let group = adw::PreferencesGroup::builder()
+            .title("Double Tap")
+            .build();
+        group.add(&gesture_combo_row(
+            "Left",
             actions.get("double_tap_left").cloned(),
-            dt_options.clone(),
+            &dt_options,
             "double_tap_left",
+            sender,
         ));
-        content = content.push(gesture_row(
-            "Right:",
+        group.add(&gesture_combo_row(
+            "Right",
             actions.get("double_tap_right").cloned(),
-            dt_options,
+            &dt_options,
             "double_tap_right",
+            sender,
         ));
-        content = content.push(horizontal_rule(1));
+        content.append(&group.upcast::<gtk4::Widget>());
     }
 
     // Triple tap
     let tt_options = parse_options(actions.get("triple_tap_options"));
     if !tt_options.is_empty() {
-        content = content.push(text("Triple Tap").size(16));
-        content = content.push(gesture_row(
-            "Left:",
+        let group = adw::PreferencesGroup::builder()
+            .title("Triple Tap")
+            .build();
+        group.add(&gesture_combo_row(
+            "Left",
             actions.get("triple_tap_left").cloned(),
-            tt_options.clone(),
+            &tt_options,
             "triple_tap_left",
+            sender,
         ));
-        content = content.push(gesture_row(
-            "Right:",
+        group.add(&gesture_combo_row(
+            "Right",
             actions.get("triple_tap_right").cloned(),
-            tt_options,
+            &tt_options,
             "triple_tap_right",
+            sender,
         ));
-        content = content.push(horizontal_rule(1));
+        content.append(&group.upcast::<gtk4::Widget>());
     }
 
     // Long tap
     let lt_options = parse_options(actions.get("long_tap_options"));
     if !lt_options.is_empty() {
-        content = content.push(text("Long Tap").size(16));
-        content = content.push(gesture_row(
-            "Left:",
+        let group = adw::PreferencesGroup::builder()
+            .title("Long Tap")
+            .build();
+        group.add(&gesture_combo_row(
+            "Left",
             actions.get("long_tap_left").cloned(),
-            lt_options.clone(),
+            &lt_options,
             "long_tap_left",
+            sender,
         ));
-
         if actions.contains_key("long_tap_right") {
-            content = content.push(gesture_row(
-                "Right:",
+            group.add(&gesture_combo_row(
+                "Right",
                 actions.get("long_tap_right").cloned(),
-                lt_options,
+                &lt_options,
                 "long_tap_right",
+                sender,
             ));
         }
-        content = content.push(horizontal_rule(1));
+        content.append(&group.upcast::<gtk4::Widget>());
     }
 
     // Noise control cycle
     let nc_options = parse_options(actions.get("noise_control_options"));
     if !nc_options.is_empty() {
-        content = content.push(text("ANC Cycle Mode").size(16));
-        content = content.push(gesture_row(
-            "Left:",
+        let group = adw::PreferencesGroup::builder()
+            .title("ANC Cycle Mode")
+            .build();
+        group.add(&gesture_combo_row(
+            "Left",
             actions.get("noise_control_left").cloned(),
-            nc_options.clone(),
+            &nc_options,
             "noise_control_left",
+            sender,
         ));
         if actions.contains_key("noise_control_right") {
-            content = content.push(gesture_row(
-                "Right:",
+            group.add(&gesture_combo_row(
+                "Right",
                 actions.get("noise_control_right").cloned(),
-                nc_options,
+                &nc_options,
                 "noise_control_right",
+                sender,
             ));
         }
-        content = content.push(horizontal_rule(1));
+        content.append(&group.upcast::<gtk4::Widget>());
     }
 
     // Swipe
     let swipe_options = parse_options(actions.get("swipe_gesture_options"));
     if !swipe_options.is_empty() {
-        content = content.push(text("Swipe Gesture").size(16));
-        content = content.push(gesture_row(
-            "Action:",
+        let group = adw::PreferencesGroup::builder()
+            .title("Swipe Gesture")
+            .build();
+        group.add(&gesture_combo_row(
+            "Action",
             actions.get("swipe_gesture").cloned(),
-            swipe_options,
+            &swipe_options,
             "swipe_gesture",
+            sender,
         ));
+        content.append(&group.upcast::<gtk4::Widget>());
     }
 
-    container(content).padding(20).width(Length::Fill).into()
+    clamp.set_child(Some(&content));
+    container.append(&clamp);
 }
 
-fn gesture_row<'a>(
-    label: &'a str,
+fn gesture_combo_row(
+    label: &str,
     current: Option<String>,
-    options: Vec<String>,
+    options: &[String],
     prop_name: &'static str,
-) -> Element<'a, Message> {
-    let display_options: Vec<String> = options.iter().map(|s| gesture_display_name(s)).collect();
-    let current_display = current.as_ref().map(|s| gesture_display_name(s));
+    sender: &ComponentSender<MyBudsApp>,
+) -> adw::ComboRow {
+    let combo = adw::ComboRow::builder().title(label).build();
 
-    let options_clone = options.clone();
-    let display_clone = display_options.clone();
+    let display_labels: Vec<String> = options.iter().map(|s| gesture_display_name(s)).collect();
+    let string_list =
+        gtk4::StringList::new(&display_labels.iter().map(|s| s.as_str()).collect::<Vec<_>>());
+    combo.set_model(Some(&string_list));
 
-    row![
-        text(label).size(14).width(Length::Fixed(80.0)),
-        pick_list(display_options, current_display, move |selected: String| {
-            let idx = display_clone
-                .iter()
-                .position(|s| *s == selected)
-                .unwrap_or(0);
-            Message::SetGesture(prop_name.to_string(), options_clone[idx].clone())
-        })
-        .width(Length::Fixed(200.0)),
-    ]
-    .spacing(8)
-    .into()
+    if let Some(ref current) = current {
+        if let Some(pos) = options.iter().position(|o| o == current) {
+            combo.set_selected(pos as u32);
+        }
+    }
+
+    let s = sender.clone();
+    let opts = options.to_vec();
+    combo.connect_selected_notify(move |c| {
+        let idx = c.selected() as usize;
+        if idx < opts.len() {
+            s.input(Message::SetGesture(
+                prop_name.to_string(),
+                opts[idx].clone(),
+            ));
+        }
+    });
+
+    combo
 }
 
 fn parse_options(raw: Option<&String>) -> Vec<String> {

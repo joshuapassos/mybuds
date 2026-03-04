@@ -1,106 +1,116 @@
-use iced::widget::{button, column, container, row, text};
-use iced::{Element, Length};
+use gtk4::prelude::*;
+use relm4::ComponentSender;
 
-fn anc_mode_label(mode: &str) -> String {
+use crate::ui::{Message, MyBudsApp};
+
+fn anc_mode_label(mode: &str) -> &str {
     match mode {
-        "normal" => "Off".into(),
-        "cancellation" => "Noise Cancelling".into(),
-        "awareness" => "Awareness".into(),
-        other => other.to_string(),
+        "normal" => "Off",
+        "cancellation" => "Noise Cancelling",
+        "awareness" => "Awareness",
+        _ => mode,
     }
 }
 
-fn anc_level_label(level: &str) -> String {
+fn anc_level_label(level: &str) -> &str {
     match level {
-        "comfort" => "Comfort".into(),
-        "normal" => "Normal".into(),
-        "ultra" => "Ultra".into(),
-        "dynamic" => "Dynamic".into(),
-        "voice_boost" => "Voice Boost".into(),
-        other => other.to_string(),
+        "comfort" => "Comfort",
+        "normal" => "Normal",
+        "ultra" => "Ultra",
+        "dynamic" => "Dynamic",
+        "voice_boost" => "Voice Boost",
+        _ => level,
     }
 }
 
-/// Render ANC mode as styled toggle buttons.
-pub fn anc_mode_selector<'a, M: Clone + 'a>(
+pub fn anc_mode_buttons(
     current_mode: Option<&str>,
     options: &[String],
-    on_change: impl Fn(String) -> M + 'a,
-) -> Element<'a, M> {
-    let section_label = text("Noise Control".to_string())
-        .size(16)
-        .color(iced::Color::from_rgb(0.3, 0.3, 0.3));
+    sender: &ComponentSender<MyBudsApp>,
+) -> gtk4::Box {
+    let row = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
+    row.add_css_class("linked");
+    row.set_halign(gtk4::Align::Center);
+    row.set_margin_top(8);
+    row.set_margin_bottom(8);
 
-    let mut buttons: Vec<Element<'a, M>> = Vec::new();
+    let mut first_btn: Option<gtk4::ToggleButton> = None;
 
-    for opt in options.iter() {
+    for opt in options {
         let label = anc_mode_label(opt);
         let is_active = current_mode == Some(opt.as_str());
-        let opt_clone = opt.clone();
 
-        let style = if is_active {
-            button::primary
+        let btn = gtk4::ToggleButton::builder()
+            .label(label)
+            .active(is_active)
+            .build();
+
+        if let Some(ref group) = first_btn {
+            btn.set_group(Some(group));
         } else {
-            button::secondary
-        };
+            first_btn = Some(btn.clone());
+        }
 
-        let btn = button(
-            container(text(label).size(13))
-                .center_x(Length::Fill)
-                .padding(4),
-        )
-        .on_press(on_change(opt_clone))
-        .style(style)
-        .width(Length::Fill);
+        let s = sender.clone();
+        let opt_clone = opt.clone();
+        btn.connect_toggled(move |b| {
+            if b.is_active() {
+                s.input(Message::SetAncMode(opt_clone.clone()));
+            }
+        });
 
-        buttons.push(btn.into());
+        row.append(&btn);
     }
 
-    let button_row = row(buttons).spacing(6);
-
-    column![section_label, button_row]
-        .spacing(8)
-        .into()
+    row
 }
 
-/// Render ANC level as styled toggle buttons.
-pub fn anc_level_selector<'a, M: Clone + 'a>(
+pub fn anc_level_buttons(
     current_level: Option<&str>,
     options: &[String],
-    on_change: impl Fn(String) -> M + 'a,
-) -> Element<'a, M> {
-    let section_label = text("Level".to_string())
-        .size(14)
-        .color(iced::Color::from_rgb(0.4, 0.4, 0.4));
+    sender: &ComponentSender<MyBudsApp>,
+) -> gtk4::Box {
+    let wrapper = gtk4::Box::new(gtk4::Orientation::Vertical, 4);
 
-    let mut buttons: Vec<Element<'a, M>> = Vec::new();
+    let label = gtk4::Label::builder()
+        .label("Level")
+        .css_classes(["dim-label", "caption"])
+        .halign(gtk4::Align::Start)
+        .build();
+    wrapper.append(&label);
 
-    for opt in options.iter() {
+    let row = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
+    row.add_css_class("linked");
+    row.set_halign(gtk4::Align::Center);
+
+    let mut first_btn: Option<gtk4::ToggleButton> = None;
+
+    for opt in options {
         let label = anc_level_label(opt);
         let is_active = current_level == Some(opt.as_str());
-        let opt_clone = opt.clone();
 
-        let style = if is_active {
-            button::primary
+        let btn = gtk4::ToggleButton::builder()
+            .label(label)
+            .active(is_active)
+            .build();
+
+        if let Some(ref group) = first_btn {
+            btn.set_group(Some(group));
         } else {
-            button::secondary
-        };
+            first_btn = Some(btn.clone());
+        }
 
-        let btn = button(
-            container(text(label).size(12))
-                .center_x(Length::Fill)
-                .padding(2),
-        )
-        .on_press(on_change(opt_clone))
-        .style(style)
-        .width(Length::Fill);
+        let s = sender.clone();
+        let opt_clone = opt.clone();
+        btn.connect_toggled(move |b| {
+            if b.is_active() {
+                s.input(Message::SetAncLevel(opt_clone.clone()));
+            }
+        });
 
-        buttons.push(btn.into());
+        row.append(&btn);
     }
 
-    let button_row = row(buttons).spacing(4);
-
-    column![section_label, button_row]
-        .spacing(6)
-        .into()
+    wrapper.append(&row);
+    wrapper
 }

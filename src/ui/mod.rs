@@ -1,12 +1,12 @@
 pub mod pages;
-pub mod theme;
 pub mod widgets;
 
 use std::collections::HashMap;
 use std::sync::atomic::Ordering;
 
-use iced::widget::{button, column, container, horizontal_rule, row, scrollable, text};
-use iced::{Element, Length, Task, Theme};
+use gtk4::prelude::*;
+use libadwaita as adw;
+use relm4::prelude::*;
 
 use crate::device::handler::PropertyStore;
 use crate::tray::TrayFlags;
@@ -34,6 +34,29 @@ impl Tab {
         }
     }
 
+    fn icon(&self) -> &'static str {
+        // These are from the freedesktop icon naming spec — available on all Linux desktops
+        match self {
+            Tab::Home => "audio-headphones-symbolic",
+            Tab::Sound => "audio-volume-high-symbolic",
+            Tab::Gestures => "input-touchpad-symbolic",
+            Tab::DualConnect => "bluetooth-active-symbolic",
+            Tab::DeviceInfo => "dialog-information-symbolic",
+            Tab::Settings => "preferences-system-symbolic",
+        }
+    }
+
+    fn name(&self) -> &'static str {
+        match self {
+            Tab::Home => "home",
+            Tab::Sound => "sound",
+            Tab::Gestures => "gestures",
+            Tab::DualConnect => "dual_connect",
+            Tab::DeviceInfo => "device_info",
+            Tab::Settings => "settings",
+        }
+    }
+
     fn all() -> &'static [Tab] {
         &[
             Tab::Home,
@@ -48,8 +71,9 @@ impl Tab {
 
 /// Application messages.
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub enum Message {
-    SwitchTab(Tab),
+    SwitchTab(String),
     SetAncMode(String),
     SetAncLevel(String),
     SetEqPreset(String),
@@ -58,14 +82,16 @@ pub enum Message {
     SetAutoPause(bool),
     SetGesture(String, String),
     SetDualConnect(bool),
-    // AirPods-specific
     SetConversationAwareness(bool),
     SetPersonalizedVolume(bool),
-    /// Property store snapshot received from async task.
-    PropsRefreshed(HashMap<String, HashMap<String, String>>),
-    /// Window close button was clicked.
-    WindowCloseRequested(iced::window::Id),
     Tick,
+}
+
+/// Init data passed from main.
+pub struct AppInit {
+    pub props: PropertyStore,
+    pub property_tx: Option<tokio::sync::mpsc::Sender<(String, String, String)>>,
+    pub tray_flags: Option<TrayFlags>,
 }
 
 /// Application state.
@@ -80,69 +106,220 @@ pub struct MyBudsApp {
     actions: HashMap<String, String>,
     config: HashMap<String, String>,
     dual_connect: HashMap<String, String>,
-    // AirPods-specific
     ear_detection: HashMap<String, String>,
     conversation_awareness: HashMap<String, String>,
     personalized_volume: HashMap<String, String>,
     connected: bool,
-    /// Currently open main window
-    main_window: iced::window::Id,
-    /// Channel to send property change requests
     property_tx: Option<tokio::sync::mpsc::Sender<(String, String, String)>>,
-    /// Tray communication flags
     tray_flags: Option<TrayFlags>,
-}
-
-fn window_settings() -> iced::window::Settings {
-    let icon = iced::window::icon::from_file_data(
-        include_bytes!("../../assets/icon-128.png"),
-        None,
-    )
-    .ok();
-    iced::window::Settings {
-        size: iced::Size::new(480.0, 600.0),
-        icon,
-        exit_on_close_request: false, // We handle close requests to minimize instead
-        ..Default::default()
-    }
+    // Page content containers (stored in model so update_view can access them)
+    home_box: gtk4::Box,
+    sound_box: gtk4::Box,
+    gestures_box: gtk4::Box,
+    dual_connect_box: gtk4::Box,
+    device_info_box: gtk4::Box,
+    settings_box: gtk4::Box,
 }
 
 impl MyBudsApp {
-    pub fn new(
-        props: PropertyStore,
-        property_tx: Option<tokio::sync::mpsc::Sender<(String, String, String)>>,
-        tray_flags: Option<TrayFlags>,
-    ) -> (Self, Task<Message>) {
-        // Daemon doesn't open a window — we open one ourselves
-        let (id, open_task) = iced::window::open(window_settings());
-
-        (
-            Self {
-                current_tab: Tab::Home,
-                props,
-                battery: HashMap::new(),
-                anc: HashMap::new(),
-                info: HashMap::new(),
-                sound: HashMap::new(),
-                actions: HashMap::new(),
-                config: HashMap::new(),
-                dual_connect: HashMap::new(),
-                ear_detection: HashMap::new(),
-                conversation_awareness: HashMap::new(),
-                personalized_volume: HashMap::new(),
-                connected: false,
-                main_window: id,
-                property_tx,
-                tray_flags,
-            },
-            open_task.discard(),
-        )
+    fn refresh_props(&mut self) {
+        let store = self.props.lock().unwrap();
+        self.battery = store.get("battery").cloned().unwrap_or_default();
+        self.anc = store.get("anc").cloned().unwrap_or_default();
+        self.info = store.get("info").cloned().unwrap_or_default();
+        self.sound = store.get("sound").cloned().unwrap_or_default();
+        self.actions = store.get("action").cloned().unwrap_or_default();
+        self.config = store.get("config").cloned().unwrap_or_default();
+        self.dual_connect = store.get("dual_connect").cloned().unwrap_or_default();
+        self.ear_detection = store.get("ear_detection").cloned().unwrap_or_default();
+        self.conversation_awareness = store
+            .get("conversation_awareness")
+            .cloned()
+            .unwrap_or_default();
+        self.personalized_volume = store
+            .get("personalized_volume")
+            .cloned()
+            .unwrap_or_default();
+        self.connected = !self.battery.is_empty();
     }
 
-    pub fn update(&mut self, message: Message) -> Task<Message> {
+    fn send_property(&self, group: &str, prop: &str, value: &str) {
+        if let Some(ref tx) = self.property_tx {
+            let _ = tx.try_send((group.to_string(), prop.to_string(), value.to_string()));
+        }
+    }
+
+    fn rebuild_pages(&self, sender: &ComponentSender<Self>) {
+        pages::home::build(
+            &self.home_box,
+            &self.battery,
+            &self.anc,
+            &self.info,
+            &self.ear_detection,
+            &self.conversation_awareness,
+            &self.personalized_volume,
+            self.connected,
+            sender,
+        );
+        pages::sound::build(&self.sound_box, &self.sound, &self.config, sender);
+        pages::gestures::build(&self.gestures_box, &self.actions, sender);
+        pages::dual_connect::build(&self.dual_connect_box, &self.dual_connect, sender);
+        pages::device_info::build(&self.device_info_box, &self.info);
+        pages::settings::build(&self.settings_box, &self.config, sender);
+    }
+}
+
+#[allow(unused_variables, unused_assignments)]
+#[relm4::component(pub)]
+impl SimpleComponent for MyBudsApp {
+    type Init = AppInit;
+    type Input = Message;
+    type Output = ();
+
+    view! {
+        adw::ApplicationWindow {
+            set_default_width: 480,
+            set_default_height: 600,
+            set_title: Some("MyBuds"),
+
+            connect_close_request[sender] => move |window| {
+                window.set_visible(false);
+                gtk4::glib::Propagation::Stop
+            },
+
+            gtk4::Box {
+                set_orientation: gtk4::Orientation::Vertical,
+
+                adw::HeaderBar {
+                    set_centering_policy: adw::CenteringPolicy::Strict,
+                    #[wrap(Some)]
+                    #[name = "switcher_title"]
+                    set_title_widget = &adw::ViewSwitcherTitle {
+                        set_stack: Some(&stack),
+                        set_title: "MyBuds",
+                    },
+                },
+
+                #[local_ref]
+                stack -> adw::ViewStack {},
+
+                #[name = "switcher_bar"]
+                adw::ViewSwitcherBar {
+                    set_stack: Some(&stack),
+                    set_reveal: false,
+                },
+            },
+        }
+    }
+
+    fn init(
+        init: Self::Init,
+        root: Self::Root,
+        sender: ComponentSender<Self>,
+    ) -> ComponentParts<Self> {
+        // Build page content boxes
+        let home_box = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
+        let sound_box = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
+        let gestures_box = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
+        let dual_connect_box = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
+        let device_info_box = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
+        let settings_box = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
+
+        // Build the ViewStack
+        let stack = adw::ViewStack::new();
+        stack.set_vexpand(true);
+
+        let page_defs: &[(&gtk4::Box, Tab)] = &[
+            (&home_box, Tab::Home),
+            (&sound_box, Tab::Sound),
+            (&gestures_box, Tab::Gestures),
+            (&dual_connect_box, Tab::DualConnect),
+            (&device_info_box, Tab::DeviceInfo),
+            (&settings_box, Tab::Settings),
+        ];
+
+        for (page_box, tab) in page_defs {
+            let scrolled = gtk4::ScrolledWindow::builder()
+                .hscrollbar_policy(gtk4::PolicyType::Never)
+                .vexpand(true)
+                .child(*page_box)
+                .build();
+            let page = stack.add_titled(&scrolled, Some(tab.name()), tab.label());
+            page.set_icon_name(Some(tab.icon()));
+        }
+
+        let model = MyBudsApp {
+            current_tab: Tab::Home,
+            props: init.props,
+            battery: HashMap::new(),
+            anc: HashMap::new(),
+            info: HashMap::new(),
+            sound: HashMap::new(),
+            actions: HashMap::new(),
+            config: HashMap::new(),
+            dual_connect: HashMap::new(),
+            ear_detection: HashMap::new(),
+            conversation_awareness: HashMap::new(),
+            personalized_volume: HashMap::new(),
+            connected: false,
+            property_tx: init.property_tx,
+            tray_flags: init.tray_flags,
+            home_box,
+            sound_box,
+            gestures_box,
+            dual_connect_box,
+            device_info_box,
+            settings_box,
+        };
+
+        let widgets = view_output!();
+
+        // Bind: when title switcher can't fit tabs, reveal bottom bar instead
+        widgets
+            .switcher_title
+            .bind_property("title-visible", &widgets.switcher_bar, "reveal")
+            .sync_create()
+            .build();
+
+        // GLib timeout for periodic property refresh
+        let tick_sender = sender.clone();
+        gtk4::glib::timeout_add_seconds_local(1, move || {
+            tick_sender.input(Message::Tick);
+            gtk4::glib::ControlFlow::Continue
+        });
+
+        // Handle tray show_window / quit signals
+        if let Some(ref flags) = model.tray_flags {
+            let show_flag = flags.show_window.clone();
+            let quit_flag = flags.quit_app.clone();
+            let win = root.clone();
+            gtk4::glib::timeout_add_local(std::time::Duration::from_millis(250), move || {
+                if quit_flag.load(Ordering::Relaxed) {
+                    if let Some(app) = win.application() {
+                        app.quit();
+                    }
+                    return gtk4::glib::ControlFlow::Break;
+                }
+                if show_flag.swap(false, Ordering::Relaxed) {
+                    win.set_visible(true);
+                    win.present();
+                }
+                gtk4::glib::ControlFlow::Continue
+            });
+        }
+
+        ComponentParts { model, widgets }
+    }
+
+    fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>) {
         match message {
-            Message::SwitchTab(tab) => {
-                self.current_tab = tab;
+            Message::SwitchTab(name) => {
+                for tab in Tab::all() {
+                    if tab.name() == name {
+                        self.current_tab = *tab;
+                        break;
+                    }
+                }
             }
             Message::SetAncMode(mode) => {
                 self.send_property("anc", "mode", &mode);
@@ -157,10 +334,18 @@ impl MyBudsApp {
                 self.send_property("config_sound_quality", "quality_preference", &quality);
             }
             Message::SetLowLatency(enabled) => {
-                self.send_property("low_latency", "low_latency", if enabled { "true" } else { "false" });
+                self.send_property(
+                    "low_latency",
+                    "low_latency",
+                    if enabled { "true" } else { "false" },
+                );
             }
             Message::SetAutoPause(enabled) => {
-                self.send_property("tws_auto_pause", "auto_pause", if enabled { "true" } else { "false" });
+                self.send_property(
+                    "tws_auto_pause",
+                    "auto_pause",
+                    if enabled { "true" } else { "false" },
+                );
             }
             Message::SetGesture(prop, value) => {
                 let group = if prop.starts_with("double_tap") {
@@ -177,126 +362,30 @@ impl MyBudsApp {
                 self.send_property(group, &prop, &value);
             }
             Message::SetDualConnect(enabled) => {
-                self.send_property("dual_connect", "enabled", if enabled { "true" } else { "false" });
-            }
-            Message::SetConversationAwareness(enabled) => {
-                self.send_property("conversation_awareness", "enabled", if enabled { "true" } else { "false" });
-            }
-            Message::SetPersonalizedVolume(enabled) => {
-                self.send_property("personalized_volume", "enabled", if enabled { "true" } else { "false" });
-            }
-            Message::WindowCloseRequested(_id) => {
-                // Minimize window instead of closing (keeps daemon alive)
-                // Note: This works on GNOME, KDE, Sway but not on Niri (tiling compositors)
-                return iced::window::minimize(self.main_window, true);
-            }
-            Message::Tick => {
-                if let Some(ref flags) = self.tray_flags {
-                    // Check tray quit signal
-                    if flags.quit_app.load(Ordering::Relaxed) {
-                        return iced::exit();
-                    }
-                    // Check tray show-window signal
-                    if flags.show_window.swap(false, Ordering::Relaxed) {
-                        // Restore window: unminimize and bring to focus
-                        return Task::batch([
-                            iced::window::minimize(self.main_window, false),
-                            iced::window::gain_focus(self.main_window),
-                        ]);
-                    }
-                }
-
-                // Fetch latest props from the shared store
-                let props = self.props.clone();
-                return Task::perform(
-                    async move {
-                        let store = props.lock().await;
-                        store.clone()
-                    },
-                    Message::PropsRefreshed,
+                self.send_property(
+                    "dual_connect",
+                    "enabled",
+                    if enabled { "true" } else { "false" },
                 );
             }
-            Message::PropsRefreshed(store) => {
-                self.battery = store.get("battery").cloned().unwrap_or_default();
-                self.anc = store.get("anc").cloned().unwrap_or_default();
-                self.info = store.get("info").cloned().unwrap_or_default();
-                self.sound = store.get("sound").cloned().unwrap_or_default();
-                self.actions = store.get("action").cloned().unwrap_or_default();
-                self.config = store.get("config").cloned().unwrap_or_default();
-                self.dual_connect = store.get("dual_connect").cloned().unwrap_or_default();
-                self.ear_detection = store.get("ear_detection").cloned().unwrap_or_default();
-                self.conversation_awareness = store.get("conversation_awareness").cloned().unwrap_or_default();
-                self.personalized_volume = store.get("personalized_volume").cloned().unwrap_or_default();
-                self.connected = !self.battery.is_empty();
+            Message::SetConversationAwareness(enabled) => {
+                self.send_property(
+                    "conversation_awareness",
+                    "enabled",
+                    if enabled { "true" } else { "false" },
+                );
             }
-        }
-        Task::none()
-    }
-
-    pub fn view(&self, _window_id: iced::window::Id) -> Element<'_, Message> {
-        // Tab bar
-        let tab_bar = row(
-            Tab::all().iter().map(|&tab| {
-                let is_active = tab == self.current_tab;
-                let style = if is_active {
-                    button::primary
-                } else {
-                    button::secondary
-                };
-                button(text(tab.label()).size(13))
-                    .on_press(Message::SwitchTab(tab))
-                    .style(style)
-                    .into()
-            }),
-        )
-        .spacing(4)
-        .padding(8);
-
-        // Page content
-        let page_content: Element<'_, Message> = match self.current_tab {
-            Tab::Home => pages::home::view(
-                &self.battery,
-                &self.anc,
-                &self.info,
-                &self.ear_detection,
-                &self.conversation_awareness,
-                &self.personalized_volume,
-                self.connected,
-            ),
-            Tab::Sound => pages::sound::view(&self.sound, &self.config),
-            Tab::Gestures => pages::gestures::view(&self.actions),
-            Tab::DualConnect => pages::dual_connect::view(&self.dual_connect),
-            Tab::DeviceInfo => pages::device_info::view(&self.info),
-            Tab::Settings => pages::settings::view(&self.config),
-        };
-
-        let content = column![
-            tab_bar,
-            horizontal_rule(1),
-            scrollable(page_content).height(Length::Fill),
-        ]
-        .spacing(0);
-
-        container(content)
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .into()
-    }
-
-    pub fn theme(&self, _window_id: iced::window::Id) -> Theme {
-        theme::app_theme()
-    }
-
-    pub fn subscription(&self) -> iced::Subscription<Message> {
-        iced::Subscription::batch([
-            iced::time::every(std::time::Duration::from_secs(1)).map(|_| Message::Tick),
-            iced::window::close_requests().map(Message::WindowCloseRequested),
-        ])
-    }
-
-    fn send_property(&self, group: &str, prop: &str, value: &str) {
-        if let Some(ref tx) = self.property_tx {
-            let _ = tx.try_send((group.to_string(), prop.to_string(), value.to_string()));
+            Message::SetPersonalizedVolume(enabled) => {
+                self.send_property(
+                    "personalized_volume",
+                    "enabled",
+                    if enabled { "true" } else { "false" },
+                );
+            }
+            Message::Tick => {
+                self.refresh_props();
+                self.rebuild_pages(&sender);
+            }
         }
     }
 }

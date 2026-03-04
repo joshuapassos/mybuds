@@ -7,12 +7,13 @@ mod tray;
 mod tui;
 mod ui;
 
-use std::sync::Arc;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 use anyhow::Result;
 use bluer::Address;
 use clap::Parser;
-use tokio::sync::{mpsc, Mutex};
+use tokio::sync::mpsc;
 use tracing::{error, info};
 
 use bluetooth::scanner;
@@ -20,6 +21,7 @@ use config::AppConfig;
 use device::handler::PropertyStore;
 use device::models::profile_for_device;
 use tray::TrayFlags;
+use ui::{AppInit, MyBudsApp};
 
 #[derive(Parser)]
 #[command(name = "mybuds", about = "Desktop manager for Huawei FreeBuds headphones")]
@@ -67,8 +69,8 @@ fn main() -> Result<()> {
     // Property change channel (UI -> device manager)
     let (prop_tx, prop_rx) = mpsc::channel::<(String, String, String)>(32);
 
-    // Shared property store
-    let props: PropertyStore = Arc::new(Mutex::new(std::collections::HashMap::new()));
+    // Shared property store (std::sync::Mutex — works with both GTK and tokio)
+    let props: PropertyStore = Arc::new(Mutex::new(HashMap::new()));
 
     if cli.tui {
         run_tui_mode(config, props, prop_tx, prop_rx)
@@ -85,14 +87,14 @@ fn run_gui_mode(
 ) -> Result<()> {
     let props_clone = props.clone();
 
-    // Shared tray flags for tray <-> iced communication
+    // Shared tray flags for tray <-> GUI communication
     let tray_flags = TrayFlags::new();
     let tray_flags_clone = tray_flags.clone();
 
     // Clone prop_tx so the tray can also send property changes (e.g. ANC mode)
     let prop_tx_tray = prop_tx.clone();
 
-    // Spawn Bluetooth manager in background
+    // Spawn Bluetooth manager + tray in background thread (tokio runtime)
     let config_clone = config.clone();
     std::thread::spawn(move || {
         let rt = tokio::runtime::Runtime::new().unwrap();
@@ -101,22 +103,29 @@ fn run_gui_mode(
             let tray_flags_for_loop = tray_flags_clone.clone();
             let tray_handle = tray::spawn_tray(tray_flags_clone);
 
-            if let Err(e) =
-                run_bluetooth_with_tray(config_clone, props_clone.clone(), prop_rx, tray_handle, tray_flags_for_loop, prop_tx_tray)
-                    .await
+            if let Err(e) = run_bluetooth_with_tray(
+                config_clone,
+                props_clone.clone(),
+                prop_rx,
+                tray_handle,
+                tray_flags_for_loop,
+                prop_tx_tray,
+            )
+            .await
             {
                 error!("Bluetooth manager error: {}", e);
             }
         });
     });
 
-    // Run iced daemon on main thread.
-    // Unlike iced::application, the daemon does NOT exit when the last window
-    // is closed — it keeps running so we can reopen from the system tray.
-    iced::daemon("MyBuds", MyBudsApp::update, MyBudsApp::view)
-        .theme(MyBudsApp::theme)
-        .subscription(MyBudsApp::subscription)
-        .run_with(move || MyBudsApp::new(props.clone(), Some(prop_tx), Some(tray_flags)))?;
+    // Run Relm4/GTK4 on main thread
+    let app = relm4::RelmApp::new("com.github.mybuds");
+    relm4::set_global_css(include_str!("../assets/style.css"));
+    app.run::<MyBudsApp>(AppInit {
+        props,
+        property_tx: Some(prop_tx),
+        tray_flags: Some(tray_flags),
+    });
 
     Ok(())
 }
@@ -142,9 +151,6 @@ fn run_tui_mode(
     // Run TUI on main thread
     tui::run(props, prop_tx)
 }
-
-// Re-export for iced
-use ui::MyBudsApp;
 
 async fn run_bluetooth_with_tray(
     config: AppConfig,
@@ -176,7 +182,8 @@ async fn run_bluetooth_with_tray(
         profile.name, profile.transport
     );
 
-    let mut bt_manager = bluetooth::BluetoothManager::new(address, profile, props.clone(), prop_rx);
+    let mut bt_manager =
+        bluetooth::BluetoothManager::new(address, profile, props.clone(), prop_rx);
 
     // Update tray with device name
     let name = device_name.clone();
@@ -203,7 +210,9 @@ async fn run_bluetooth_with_tray(
             let pending = tray_flags.pending_anc_mode.lock().unwrap().take();
             if let Some(mode) = pending {
                 info!("Tray ANC mode change: {}", mode);
-                let _ = prop_tx.send(("anc".to_string(), "mode".to_string(), mode)).await;
+                let _ = prop_tx
+                    .send(("anc".to_string(), "mode".to_string(), mode))
+                    .await;
             }
 
             // Check for pending Dual Connect toggle from tray menu
@@ -252,7 +261,8 @@ async fn run_bluetooth_headless(
         profile.name, profile.transport
     );
 
-    let mut bt_manager = bluetooth::BluetoothManager::new(address, profile, props.clone(), prop_rx);
+    let mut bt_manager =
+        bluetooth::BluetoothManager::new(address, profile, props.clone(), prop_rx);
     bt_manager.run_with_reconnect().await;
 
     Ok(())

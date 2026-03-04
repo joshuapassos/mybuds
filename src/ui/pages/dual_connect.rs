@@ -1,13 +1,14 @@
 use std::collections::HashMap;
 use std::ffi::CStr;
 
-use iced::widget::{column, container, horizontal_rule, row, text, toggler, Space};
-use iced::{Border, Element, Length, Theme};
+use gtk4::prelude::*;
+use libadwaita as adw;
+use libadwaita::prelude::*;
+use relm4::ComponentSender;
 use serde_json::Value;
 
-use crate::ui::Message;
+use crate::ui::{Message, MyBudsApp};
 
-/// Get system hostname
 fn get_hostname() -> String {
     unsafe {
         let mut buf = [0u8; 256];
@@ -49,7 +50,10 @@ fn parse_devices(json_str: &str) -> Vec<Device> {
                     .get("connected")
                     .and_then(|v| v.as_bool())
                     .unwrap_or(false),
-                playing: obj.get("playing").and_then(|v| v.as_bool()).unwrap_or(false),
+                playing: obj
+                    .get("playing")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false),
                 auto_connect: obj
                     .get("auto_connect")
                     .and_then(|v| v.as_bool())
@@ -59,155 +63,151 @@ fn parse_devices(json_str: &str) -> Vec<Device> {
         })
         .collect();
 
-    // Sort: "This PC" first, then by MAC address
     devices.sort_by(|a, b| {
         let a_is_this_pc = !hostname.is_empty() && a.1.name.to_lowercase().contains(&hostname);
         let b_is_this_pc = !hostname.is_empty() && b.1.name.to_lowercase().contains(&hostname);
-
         match (a_is_this_pc, b_is_this_pc) {
-            (true, false) => std::cmp::Ordering::Less,    // a (this PC) comes first
-            (false, true) => std::cmp::Ordering::Greater, // b (this PC) comes first
-            _ => a.0.cmp(&b.0),                           // same priority, sort by MAC
+            (true, false) => std::cmp::Ordering::Less,
+            (false, true) => std::cmp::Ordering::Greater,
+            _ => a.0.cmp(&b.0),
         }
     });
 
     devices.into_iter().map(|(_, device)| device).collect()
 }
 
-fn device_card(name: String, connected: bool, playing: bool, auto_connect: bool, is_this_pc: bool) -> Element<'static, Message> {
-    let status_icon = if connected { "●" } else { "○" };
-    let status_color = if connected {
-        iced::Color::from_rgb(0.0, 0.8, 0.0) // Green
-    } else {
-        iced::Color::from_rgb(0.5, 0.5, 0.5) // Gray
-    };
-
-    let mut name_row = row![
-        text(status_icon).size(20).color(status_color),
-        text(name).size(16),
-    ]
-    .spacing(8);
-
-    // Add "This PC" badge if it's the current device
-    if is_this_pc {
-        name_row = name_row.push(
-            container(text("This PC").size(11))
-                .padding([2, 6])
-                .style(|theme: &Theme| {
-                    let accent = theme.palette().primary;
-                    container::Style {
-                        background: Some(iced::Color {
-                            r: accent.r * 0.2,
-                            g: accent.g * 0.2,
-                            b: accent.b * 0.2,
-                            a: 0.3,
-                        }.into()),
-                        border: Border {
-                            color: accent,
-                            width: 1.0,
-                            radius: 4.0.into(),
-                        },
-                        text_color: Some(accent),
-                        ..Default::default()
-                    }
-                })
-        );
+pub fn build(
+    container: &gtk4::Box,
+    dc: &HashMap<String, String>,
+    sender: &ComponentSender<MyBudsApp>,
+) {
+    while let Some(child) = container.first_child() {
+        container.remove(&child);
     }
 
-    let name_row = name_row.align_y(iced::Alignment::Center);
+    let clamp = adw::Clamp::builder()
+        .maximum_size(500)
+        .margin_top(12)
+        .margin_bottom(12)
+        .margin_start(12)
+        .margin_end(12)
+        .build();
 
-    let mut details = row![].spacing(16);
-
-    if connected {
-        details = details.push(text("Connected").size(12).color(iced::Color::from_rgb(0.0, 0.6, 0.0)));
-    }
-
-    if playing {
-        details = details.push(text("Playing").size(12).color(iced::Color::from_rgb(0.3, 0.5, 0.9)));
-    }
-
-    if auto_connect {
-        details = details.push(text("Auto-connect").size(12).color(iced::Color::from_rgb(0.5, 0.5, 0.5)));
-    }
-
-    let card_content = column![name_row, details].spacing(6);
-
-    container(card_content)
-        .padding(12)
-        .style(|theme: &Theme| {
-            let base_color = theme.palette().background;
-            let border_color = iced::Color {
-                r: base_color.r * 0.8,
-                g: base_color.g * 0.8,
-                b: base_color.b * 0.8,
-                a: 1.0,
-            };
-            let bg_color = iced::Color {
-                r: base_color.r * 0.95,
-                g: base_color.g * 0.95,
-                b: base_color.b * 0.95,
-                a: 1.0,
-            };
-
-            container::Style {
-                border: Border {
-                    color: border_color,
-                    width: 1.0,
-                    radius: 8.0.into(),
-                },
-                background: Some(bg_color.into()),
-                ..Default::default()
-            }
-        })
-        .width(Length::Fill)
-        .into()
-}
-
-pub fn view(dc: &HashMap<String, String>) -> Element<'_, Message> {
-    let mut content = column![text("Dual Connect").size(18)].spacing(12);
+    let content = gtk4::Box::new(gtk4::Orientation::Vertical, 12);
 
     let enabled = dc.get("enabled").map(|s| s == "true").unwrap_or(false);
 
-    content = content.push(
-        row![
-            text("Dual Connect").size(14),
-            toggler(enabled).on_toggle(|v| Message::SetDualConnect(v)),
-        ]
-        .spacing(12),
-    );
+    // Toggle
+    let toggle_group = adw::PreferencesGroup::new();
+    let toggle_row = adw::ActionRow::builder()
+        .title("Dual Connect")
+        .build();
+    let switch = gtk4::Switch::builder()
+        .active(enabled)
+        .valign(gtk4::Align::Center)
+        .build();
+    let s = sender.clone();
+    switch.connect_state_set(move |_, active| {
+        s.input(Message::SetDualConnect(active));
+        gtk4::glib::Propagation::Proceed
+    });
+    toggle_row.add_suffix(&switch);
+    toggle_row.set_activatable_widget(Some(&switch));
+    toggle_group.add(&toggle_row);
+    content.append(&toggle_group.upcast::<gtk4::Widget>());
 
     if enabled {
-        content = content.push(horizontal_rule(1));
-        content = content.push(Space::with_height(8));
-        content = content.push(text("Connected Devices").size(16));
-
         let devices_json = dc.get("devices").cloned().unwrap_or_default();
         let devices = parse_devices(&devices_json);
 
+        let devices_group = adw::PreferencesGroup::builder()
+            .title("Connected Devices")
+            .build();
+
         if devices.is_empty() {
-            content = content.push(
-                container(text("No devices paired").size(14).color(iced::Color::from_rgb(0.5, 0.5, 0.5)))
-                    .padding(12)
-            );
+            let row = adw::ActionRow::builder()
+                .title("No devices paired")
+                .build();
+            devices_group.add(&row);
         } else {
             let hostname = get_hostname();
             for device in devices {
-                let is_this_pc = !hostname.is_empty() &&
-                    device.name.to_lowercase().contains(&hostname.to_lowercase());
-
-                // This PC is always connected (we're using it right now!)
+                let is_this_pc = !hostname.is_empty()
+                    && device
+                        .name
+                        .to_lowercase()
+                        .contains(&hostname.to_lowercase());
                 let connected = device.connected || is_this_pc;
 
-                content = content.push(device_card(
-                    device.name,
-                    connected,
-                    device.playing,
-                    device.auto_connect,
-                    is_this_pc,
-                ));
+                let device_box = gtk4::Box::new(gtk4::Orientation::Vertical, 6);
+                device_box.add_css_class("device-card");
+
+                // Name row
+                let name_row = gtk4::Box::new(gtk4::Orientation::Horizontal, 8);
+                name_row.set_valign(gtk4::Align::Center);
+
+                let status_icon = if connected { "\u{25CF}" } else { "\u{25CB}" };
+                let status_class = if connected {
+                    "status-connected"
+                } else {
+                    "status-disconnected"
+                };
+                let icon_label = gtk4::Label::builder()
+                    .label(status_icon)
+                    .css_classes([status_class])
+                    .build();
+                name_row.append(&icon_label);
+
+                let name_label = gtk4::Label::builder()
+                    .label(&device.name)
+                    .css_classes(["title-4"])
+                    .build();
+                name_row.append(&name_label);
+
+                if is_this_pc {
+                    let badge = gtk4::Label::builder()
+                        .label("This PC")
+                        .css_classes(["this-pc-badge"])
+                        .build();
+                    name_row.append(&badge);
+                }
+
+                device_box.append(&name_row);
+
+                // Details row
+                let details = gtk4::Box::new(gtk4::Orientation::Horizontal, 16);
+                if connected {
+                    details.append(
+                        &gtk4::Label::builder()
+                            .label("Connected")
+                            .css_classes(["caption", "success"])
+                            .build(),
+                    );
+                }
+                if device.playing {
+                    details.append(
+                        &gtk4::Label::builder()
+                            .label("Playing")
+                            .css_classes(["caption", "accent"])
+                            .build(),
+                    );
+                }
+                if device.auto_connect {
+                    details.append(
+                        &gtk4::Label::builder()
+                            .label("Auto-connect")
+                            .css_classes(["caption", "dim-label"])
+                            .build(),
+                    );
+                }
+                device_box.append(&details);
+                devices_group.add(&device_box);
             }
         }
+
+        content.append(&devices_group.upcast::<gtk4::Widget>());
     }
 
-    container(content).padding(20).width(Length::Fill).into()
+    clamp.set_child(Some(&content));
+    container.append(&clamp);
 }

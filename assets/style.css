@@ -1,0 +1,73 @@
+/* MyBuds GTK4 Stylesheet */
+
+/* Battery progress bars */
+.battery-green progress {
+    background-color: #2eb862;
+    border-radius: 3px;
+}
+.battery-amber progress {
+    background-color: #f2ad00;
+    border-radius: 3px;
+}
+.battery-orange progress {
+    background-color: #f27300;
+    border-radius: 3px;
+}
+.battery-red progress {
+    background-color: #e63833;
+    border-radius: 3px;
+}
+
+.battery-green trough,
+.battery-amber trough,
+.battery-orange trough,
+.battery-red trough {
+    min-height: 6px;
+    border-radius: 3px;
+}
+
+/* Battery card */
+.battery-card {
+    padding: 12px 16px;
+    border-radius: 12px;
+    background-color: alpha(@card_bg_color, 0.5);
+    border: 1px solid alpha(@borders, 0.3);
+}
+
+/* Device card (dual connect) */
+.device-card {
+    padding: 12px;
+    border-radius: 8px;
+    background-color: alpha(@card_bg_color, 0.5);
+    border: 1px solid alpha(@borders, 0.3);
+}
+
+/* This PC badge */
+.this-pc-badge {
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    background-color: alpha(@accent_bg_color, 0.15);
+    color: @accent_color;
+    border: 1px solid alpha(@accent_color, 0.4);
+}
+
+/* Status dot colors */
+.status-connected {
+    color: #2eb862;
+}
+.status-disconnected {
+    color: alpha(@window_fg_color, 0.4);
+}
+
+/* Section title */
+.section-title {
+    color: alpha(@window_fg_color, 0.6);
+    font-size: 14px;
+}
+
+/* ANC toggle buttons - linked group */
+.anc-buttons button:checked {
+    background-color: @accent_bg_color;
+    color: @accent_fg_color;
+}

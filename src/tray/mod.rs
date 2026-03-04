@@ -114,7 +114,7 @@ pub async fn update_tray_from_props(
     props: &PropertyStore,
     device_name: Option<&str>,
 ) {
-    let store = props.lock().await;
+    let store = props.lock().unwrap();
 
     let battery = store.get("battery").cloned().unwrap_or_default();
     let anc_mode = store
