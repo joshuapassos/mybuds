@@ -8,7 +8,6 @@ Desktop manager for Huawei FreeBuds and HONOR Earbuds headphones on Linux. Built
 
 <p align="center">
 <img src="assets/Screenshot-1.png" width="30%" />
-  <img src="assets/Screenshot-4.png" width="80%" />
 </p>
 
 Based on [OpenFreebuds](https://github.com/melianmiko/OpenFreebuds) by melianmiko.
