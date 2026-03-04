@@ -4,14 +4,14 @@
   <img src="assets/icon-128.png" width="20%" />
 </p>
 
-Desktop manager for Huawei FreeBuds, HONOR Earbuds, and Apple AirPods headphones on Linux. Built with Rust.
+Desktop manager for Huawei FreeBuds and HONOR Earbuds headphones on Linux. Built with Rust.
 
 <p align="center">
 <img src="assets/Screenshot-1.png" width="30%" />
   <img src="assets/Screenshot-4.png" width="80%" />
 </p>
 
-Based on [OpenFreebuds](https://github.com/melianmiko/OpenFreebuds) by melianmiko and [LibrePods](https://github.com/kavishdevar/librepods) by kavishdevar.
+Based on [OpenFreebuds](https://github.com/melianmiko/OpenFreebuds) by melianmiko.
 
 ## Screenshots
 
@@ -22,23 +22,18 @@ Based on [OpenFreebuds](https://github.com/melianmiko/OpenFreebuds) by melianmik
 
 ## Features
 
-- **GUI** (Iced) and **TUI** (Ratatui) interfaces
+- **GUI** (GTK4 / Libadwaita) and **TUI** (Ratatui) interfaces
 - **System tray** integration with battery indicator, ANC quick switch, and Dual Connect toggle
 - ANC mode switching (Normal / Cancellation / Awareness / Adaptive)
 - Battery monitoring (global + per-earbud + case)
 - Equalizer presets
 - Gesture customization (double tap, triple tap, long tap, swipe)
 - Dual-device connection management with visual device cards
-- Ear detection (AirPods)
-- Conversational Awareness (AirPods Pro/Max)
-- Personalized Volume (AirPods Pro/Max)
 - Auto-pause, low latency, sound quality preferences
 - Auto-reconnect with exponential backoff
 - Desktop notifications
 
 ## Supported Devices
-
-### Huawei / HONOR
 
 | Feature | Pro 3 / Pro 4 / FreeClip | Pro 2 / Pro | 5i | 6i | 4i / HONOR Earbuds 2 | SE 2 | 5 |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
@@ -56,25 +51,13 @@ Based on [OpenFreebuds](https://github.com/melianmiko/OpenFreebuds) by melianmik
 
 Connection: RFCOMM/SPP (Huawei proprietary protocol)
 
-### Apple AirPods
-
-| Feature | AirPods Pro (2nd Gen) | AirPods Pro (3rd Gen) | AirPods Max | Other AirPods |
-|---|:---:|:---:|:---:|:---:|
-| Battery (L/R/Case) | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| Ear Detection | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| Device Info | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| ANC (Off/ANC/Transparency/Adaptive) | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x: |
-| Conversational Awareness | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x: |
-| Personalized Volume | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x: |
-
-Connection: L2CAP PSM 0x1001 (Apple AACP protocol)
-
 Devices not listed above will use a **generic probe** profile that attempts to detect available features automatically.
 
 ## Requirements
 
 - Linux with BlueZ (Bluetooth stack)
-- Paired headphones (Huawei FreeBuds, HONOR Earbuds, or Apple AirPods)
+- Paired Huawei FreeBuds or HONOR Earbuds
+- GTK4 and Libadwaita (for GUI)
 - D-Bus (for system tray / StatusNotifierItem)
 
 ## Building
@@ -118,11 +101,11 @@ In TUI mode, logs are written to `/tmp/mybuds.log`.
 
 ```
 src/
-├── bluetooth/     # BlueZ connections (RFCOMM for Huawei, L2CAP for AirPods)
-├── protocol/      # Wire protocols (Huawei SPP + Apple AACP)
-├── device/        # Feature handlers (ANC, battery, EQ, gestures, AirPods features)
-│   └── models/    # Per-device profiles with Transport enum (Rfcomm/L2cap)
-├── ui/            # Iced GUI (pages + widgets)
+├── bluetooth/     # BlueZ connections (RFCOMM)
+├── protocol/      # Wire protocol (Huawei SPP)
+├── device/        # Feature handlers (ANC, battery, EQ, gestures)
+│   └── models/    # Per-device profiles
+├── ui/            # GTK4 / Libadwaita GUI (pages + widgets)
 ├── tui/           # Ratatui terminal UI
 ├── tray/          # System tray (ksni / StatusNotifierItem)
 └── config/        # TOML app config
@@ -131,7 +114,6 @@ src/
 ## Acknowledgments
 
 - [OpenFreebuds](https://github.com/melianmiko/OpenFreebuds) by [melianmiko](https://github.com/melianmiko) — Huawei SPP protocol reverse-engineering
-- [LibrePods](https://github.com/kavishdevar/librepods) by [kavishdevar](https://github.com/kavishdevar) — Apple AACP protocol reverse-engineering
 
 ## License
 
