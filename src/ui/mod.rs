@@ -5,11 +5,45 @@ use std::collections::HashMap;
 use std::sync::atomic::Ordering;
 
 use gtk4::prelude::*;
+use gtk4::gdk;
 use libadwaita as adw;
 use relm4::prelude::*;
 
 use crate::device::handler::PropertyStore;
 use crate::tray::TrayFlags;
+
+/// Embedded Lucide icons (SVG) — loaded directly into memory, no disk writes.
+const ICONS: &[(&str, &[u8])] = &[
+    ("mybuds-home-symbolic", include_bytes!("../../assets/icons/mybuds-home-symbolic.svg")),
+    ("mybuds-sound-symbolic", include_bytes!("../../assets/icons/mybuds-sound-symbolic.svg")),
+    ("mybuds-gestures-symbolic", include_bytes!("../../assets/icons/mybuds-gestures-symbolic.svg")),
+    ("mybuds-bluetooth-symbolic", include_bytes!("../../assets/icons/mybuds-bluetooth-symbolic.svg")),
+    ("mybuds-info-symbolic", include_bytes!("../../assets/icons/mybuds-info-symbolic.svg")),
+    ("mybuds-settings-symbolic", include_bytes!("../../assets/icons/mybuds-settings-symbolic.svg")),
+];
+
+/// Write embedded icons to a temp dir so GTK can find them via search path.
+/// Must be called before any widgets are created.
+pub fn install_icons() {
+    let icon_dir = std::env::temp_dir()
+        .join("mybuds-icons")
+        .join("hicolor")
+        .join("scalable")
+        .join("actions");
+    std::fs::create_dir_all(&icon_dir).ok();
+
+    for (name, data) in ICONS {
+        std::fs::write(icon_dir.join(format!("{}.svg", name)), data).ok();
+    }
+}
+
+/// Add the icon temp dir to the display's icon theme search path.
+/// Called from init() after GTK display is available.
+fn register_icon_theme(display: &gdk::Display) {
+    let base = std::env::temp_dir().join("mybuds-icons");
+    let theme = gtk4::IconTheme::for_display(display);
+    theme.add_search_path(base.to_str().unwrap());
+}
 
 /// Tab pages.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -35,14 +69,13 @@ impl Tab {
     }
 
     fn icon(&self) -> &'static str {
-        // These are from the freedesktop icon naming spec — available on all Linux desktops
         match self {
-            Tab::Home => "audio-headphones-symbolic",
-            Tab::Sound => "audio-volume-high-symbolic",
-            Tab::Gestures => "input-touchpad-symbolic",
-            Tab::DualConnect => "bluetooth-active-symbolic",
-            Tab::DeviceInfo => "dialog-information-symbolic",
-            Tab::Settings => "preferences-system-symbolic",
+            Tab::Home => "mybuds-home-symbolic",
+            Tab::Sound => "mybuds-sound-symbolic",
+            Tab::Gestures => "mybuds-gestures-symbolic",
+            Tab::DualConnect => "mybuds-bluetooth-symbolic",
+            Tab::DeviceInfo => "mybuds-info-symbolic",
+            Tab::Settings => "mybuds-settings-symbolic",
         }
     }
 
@@ -217,6 +250,11 @@ impl SimpleComponent for MyBudsApp {
         root: Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
+        // Register icon search path now that we have a display
+        if let Some(display) = gdk::Display::default() {
+            register_icon_theme(&display);
+        }
+
         // Build page content boxes
         let home_box = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
         let sound_box = gtk4::Box::new(gtk4::Orientation::Vertical, 0);

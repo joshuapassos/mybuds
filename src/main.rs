@@ -118,6 +118,9 @@ fn run_gui_mode(
         });
     });
 
+    // Write embedded icons to temp dir before GTK starts
+    ui::install_icons();
+
     // Run Relm4/GTK4 on main thread
     let app = relm4::RelmApp::new("com.github.mybuds");
     relm4::set_global_css(include_str!("../assets/style.css"));
