@@ -15,8 +15,8 @@ Based on [OpenFreebuds](https://github.com/melianmiko/OpenFreebuds) by melianmik
 ## Screenshots
 
 <p align="center">
-  <img src="assets/Screenshot-2.png" width="66%" />
-  <img src="assets/Screenshot-3.png" width="66%" />
+  <img src="assets/Screenshot-2.png" width="100%" />
+  <img src="assets/Screenshot-3.png" width="100%" />
 </p>
 
 ## Features
