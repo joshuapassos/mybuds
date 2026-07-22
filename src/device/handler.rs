@@ -54,7 +54,13 @@ pub async fn put_properties(
 ) {
     let mut store = props.lock().unwrap();
     let entry = store.entry(group.to_string()).or_default();
-    for (k, v) in values {
+    for (k, mut v) in values {
+        // GLib/GTK strings cannot contain interior NUL bytes — handing one to a
+        // widget panics with GStrInteriorNulError. Device fields are sometimes
+        // NUL-padded or binary, so strip NULs before values can reach the UI.
+        if v.contains('\0') {
+            v = v.replace('\0', "");
+        }
         entry.insert(k, v);
     }
 }

@@ -77,9 +77,8 @@ impl DeviceHandler for InfoHandler {
                 name.to_string()
             };
 
-            // Try to decode as UTF-8, fall back to hex
-            let decoded = String::from_utf8(value.clone())
-                .unwrap_or_else(|_| value.iter().map(|b| format!("{:02x}", b)).collect());
+            // Decode as printable text, or fall back to hex for binary fields.
+            let decoded = decode_field(value);
 
             // Save model code for friendly name lookup
             if key == 15 || key == 10 {
@@ -98,6 +97,22 @@ impl DeviceHandler for InfoHandler {
 
         put_properties(props, "info", out).await;
         Ok(())
+    }
+}
+
+/// Decode a device-info parameter value for display.
+///
+/// `String::from_utf8` accepts NUL and other control bytes, which then panic
+/// (GStrInteriorNulError) once handed to a GTK widget. The device also returns
+/// reserved/empty fields as NUL padding. So we only treat a value as text when
+/// it is printable — stripping trailing NUL padding first — and otherwise fall
+/// back to a hex representation of the raw bytes.
+fn decode_field(value: &[u8]) -> String {
+    let end = value.iter().rposition(|&b| b != 0).map_or(0, |i| i + 1);
+    let trimmed = &value[..end];
+    match std::str::from_utf8(trimmed) {
+        Ok(s) if !trimmed.is_empty() && !s.chars().any(char::is_control) => s.trim().to_string(),
+        _ => value.iter().map(|b| format!("{:02x}", b)).collect(),
     }
 }
 
